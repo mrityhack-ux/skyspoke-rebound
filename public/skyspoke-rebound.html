@@ -1,0 +1,4367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SkySpoke Rebound — 3D Cyber Bicycle Obby | Haven Game Jam</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --font-display: 'Fredoka', system-ui, -apple-system, sans-serif;
+      --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --cyan: #00f5ff;
+      --magenta: #ff007f;
+      --gold: #ffd700;
+      --lime: #38f9a5;
+      --panel-bg: rgba(10, 10, 32, 0.86);
+      --panel-border: rgba(0, 245, 255, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #08061a;
+      font-family: var(--font-body);
+      color: #f8fafc;
+    }
+
+    #game-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* HUD LAYER */
+    #hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      display: none;
+      z-index: 10;
+    }
+
+    .hud-top {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pill-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .hud-stat {
+      background: var(--panel-bg);
+      border: 1.5px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.42);
+    }
+
+    .hud-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94a3b8;
+    }
+
+    .hud-val {
+      font-family: var(--font-display);
+      font-variant-numeric: tabular-nums;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1;
+      text-shadow: 0 0 12px rgba(0, 245, 255, 0.35);
+    }
+
+    .val-gold { color: var(--gold); text-shadow: 0 0 12px rgba(255, 215, 0, 0.35); }
+    .val-cyan { color: var(--cyan); }
+    .val-coral { color: #ff4da6; text-shadow: 0 0 12px rgba(255, 0, 127, 0.35); }
+    .val-lime { color: var(--lime); }
+
+    /* Course Progress Bar */
+    .progress-wrap {
+      flex: 1;
+      min-width: 200px;
+      max-width: 420px;
+      background: var(--panel-bg);
+      border: 1.5px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 8px 14px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.42);
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 5px;
+      color: #e2e8f0;
+    }
+
+    .progress-track {
+      position: relative;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--cyan), var(--magenta), var(--gold));
+      border-radius: 99px;
+      transition: width 0.15s ease-out;
+    }
+
+    .hud-btn {
+      pointer-events: auto;
+      cursor: pointer;
+      background: var(--panel-bg);
+      border: 1.5px solid var(--panel-border);
+      color: #f8fafc;
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 12px;
+      padding: 8px 12px;
+      min-height: 40px;
+      white-space: nowrap;
+      transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s, background 0.15s;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    }
+
+    .hud-btn:hover {
+      background: rgba(20, 22, 58, 0.96);
+      border-color: var(--cyan);
+      transform: translateY(-1px);
+    }
+
+    .hud-btn:active {
+      transform: scale(0.95);
+    }
+
+    .hud-btn:focus-visible,
+    .primary-btn:focus-visible,
+    .secondary-btn:focus-visible {
+      outline: 3px solid var(--cyan);
+      outline-offset: 2px;
+    }
+
+    /* Anchor Cooldown & Speedometer */
+    .hud-bottom-left {
+      position: absolute;
+      bottom: 18px;
+      left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .anchor-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--panel-bg);
+      border: 1.5px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 8px 14px;
+      font-variant-numeric: tabular-nums;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.42);
+    }
+
+    .cooldown-ring-wrap {
+      position: relative;
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+    }
+
+    .cooldown-ring-wrap svg {
+      transform: rotate(-90deg);
+      width: 34px;
+      height: 34px;
+    }
+
+    .cooldown-key {
+      position: absolute;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cyan);
+    }
+
+    .controls-mini {
+      background: rgba(10, 10, 30, 0.82);
+      border: 1px solid rgba(0, 245, 255, 0.2);
+      border-radius: 12px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+
+    .key-chip {
+      display: inline-block;
+      background: rgba(0, 245, 255, 0.16);
+      border: 1px solid rgba(0, 245, 255, 0.3);
+      color: #ffffff;
+      border-radius: 5px;
+      padding: 1px 6px;
+      font-weight: 700;
+      margin: 0 2px;
+    }
+
+    /* CYBERPUNK VIGNETTE, SPEED STREAKS & 1ST-PERSON VISOR OVERLAY */
+    #speed-streaks {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 7;
+    }
+
+    #cyber-vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 8;
+      background: radial-gradient(
+        ellipse at center,
+        rgba(0, 0, 0, 0) 48%,
+        rgba(8, 4, 24, 0.36) 76%,
+        rgba(2, 1, 10, 0.72) 100%
+      );
+    }
+
+    #visor-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9;
+      display: none;
+      box-shadow: inset 0 0 90px rgba(0, 245, 255, 0.14), inset 0 -48px 90px rgba(255, 0, 127, 0.08);
+      transition: box-shadow 0.2s ease;
+    }
+
+    #visor-overlay.boost-active {
+      box-shadow: inset 0 0 110px rgba(255, 215, 0, 0.26), inset 0 -55px 100px rgba(0, 245, 255, 0.2);
+    }
+
+    .visor-bracket {
+      position: absolute;
+      width: 54px;
+      height: 54px;
+      border: 2.5px solid rgba(0, 245, 255, 0.45);
+    }
+    .visor-tl { top: 76px; left: 26px; border-right: none; border-bottom: none; border-radius: 10px 0 0 0; }
+    .visor-tr { top: 76px; right: 26px; border-left: none; border-bottom: none; border-radius: 0 10px 0 0; }
+    .visor-bl { bottom: 28px; left: 26px; border-right: none; border-top: none; border-radius: 0 0 0 10px; }
+    .visor-br { bottom: 28px; right: 26px; border-left: none; border-top: none; border-radius: 0 0 10px 0; }
+
+    .visor-crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 28px;
+      height: 28px;
+      transform: translate(-50%, -50%);
+      border: 1.5px solid rgba(0, 245, 255, 0.34);
+      border-radius: 50%;
+    }
+    .visor-crosshair::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 4px;
+      height: 4px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: rgba(0, 245, 255, 0.72);
+    }
+
+    .visor-tag {
+      position: absolute;
+      bottom: 34px;
+      right: 42px;
+      font-family: var(--font-display);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      color: rgba(0, 245, 255, 0.72);
+      text-shadow: 0 0 8px rgba(0, 245, 255, 0.45);
+    }
+
+    /* Center Toast & Rebound Timing Ring */
+    #toast-banner {
+      position: absolute;
+      top: 92px;
+      left: 50%;
+      transform: translateX(-50%) scale(0.85);
+      background: linear-gradient(135deg, rgba(10, 10, 32, 0.96), rgba(28, 16, 56, 0.96));
+      border: 2px solid var(--cyan);
+      border-radius: 14px;
+      padding: 8px 24px;
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+      box-shadow: 0 10px 30px rgba(0, 245, 255, 0.28);
+      opacity: 0;
+      transition: opacity 0.18s, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+      white-space: nowrap;
+    }
+
+    #toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+
+    #rebound-prompt {
+      position: absolute;
+      bottom: 24%;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .rebound-ring-box {
+      position: relative;
+      width: 112px;
+      height: 112px;
+      display: grid;
+      place-items: center;
+    }
+
+    .rebound-ring-outer {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 6px solid rgba(255, 255, 255, 0.45);
+      transition: transform 0.05s linear, border-color 0.1s;
+    }
+
+    .rebound-ring-target {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      border: 5px solid var(--gold);
+      background: rgba(255, 215, 0, 0.22);
+      box-shadow: 0 0 26px rgba(255, 215, 0, 0.6);
+      display: grid;
+      place-items: center;
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.75);
+    }
+
+    .rebound-label {
+      background: rgba(10, 10, 32, 0.94);
+      border: 2px solid var(--gold);
+      border-radius: 14px;
+      padding: 5px 16px;
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--gold);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+      white-space: nowrap;
+    }
+
+    /* OVERLAYS (Title, Pause, Finish) */
+    .overlay-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: radial-gradient(circle at center, rgba(16, 12, 46, 0.44), rgba(6, 5, 22, 0.84));
+    }
+
+    .overlay-screen.hidden {
+      display: none;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 540px;
+      background: linear-gradient(165deg, rgba(16, 16, 44, 0.96), rgba(8, 8, 26, 0.98));
+      border: 2px solid rgba(0, 245, 255, 0.34);
+      border-radius: 26px;
+      padding: 28px 28px;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.68), 0 0 40px rgba(0, 245, 255, 0.14);
+    }
+
+    .jam-kicker {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+
+    .game-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(34px, 6vw, 52px);
+      font-weight: 700;
+      line-height: 1.04;
+      text-wrap: balance;
+      background: linear-gradient(180deg, #ffffff 22%, #00f5ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 4px 0 rgba(124, 58, 237, 0.65));
+    }
+
+    .subtitle {
+      margin: 12px auto 16px;
+      font-size: 15px;
+      line-height: 1.5;
+      color: #cbd5e1;
+      max-width: 450px;
+    }
+
+    .howto-line {
+      background: rgba(0, 245, 255, 0.1);
+      border: 1.5px solid rgba(0, 245, 255, 0.34);
+      border-radius: 14px;
+      padding: 10px 14px;
+      font-size: 13.5px;
+      line-height: 1.45;
+      color: #e0f2fe;
+      margin-bottom: 20px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 16px 0 20px;
+    }
+
+    .stat-box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1.5px solid rgba(0, 245, 255, 0.22);
+      border-radius: 16px;
+      padding: 10px 8px;
+    }
+
+    .stat-box .s-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+
+    .stat-box .s-val {
+      font-family: var(--font-display);
+      font-variant-numeric: tabular-nums;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .primary-btn {
+      cursor: pointer;
+      width: 100%;
+      border: none;
+      border-radius: 16px;
+      padding: 14px 24px;
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      color: #08061a;
+      background: linear-gradient(180deg, #ffe44d, #ffd700);
+      box-shadow: 0 6px 0 #c27803, 0 14px 30px rgba(255, 215, 0, 0.35);
+      transition: transform 0.1s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.1s;
+    }
+
+    .primary-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 0 #c27803, 0 18px 34px rgba(255, 215, 0, 0.45);
+    }
+
+    .primary-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #c27803;
+    }
+
+    .secondary-btn {
+      cursor: pointer;
+      margin-top: 10px;
+      width: 100%;
+      border: 1.5px solid rgba(0, 245, 255, 0.3);
+      border-radius: 14px;
+      padding: 11px 18px;
+      min-height: 44px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+      background: rgba(255, 255, 255, 0.06);
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .secondary-btn:hover {
+      background: rgba(0, 245, 255, 0.14);
+      border-color: var(--cyan);
+    }
+
+    .best-record {
+      margin-top: 14px;
+      font-size: 13px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--gold);
+      opacity: 0.94;
+    }
+
+    /* TOUCH CONTROLS */
+    #touch-controls {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      display: none;
+    }
+
+    .touch-cluster-left {
+      position: absolute;
+      bottom: 20px;
+      left: 18px;
+      display: flex;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .touch-cluster-right {
+      position: absolute;
+      bottom: 20px;
+      right: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .touch-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .touch-btn {
+      width: 66px;
+      height: 66px;
+      border-radius: 20px;
+      border: 2px solid rgba(0, 245, 255, 0.45);
+      background: rgba(10, 10, 32, 0.82);
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    }
+
+    .touch-btn.active {
+      background: rgba(0, 245, 255, 0.45);
+      border-color: var(--cyan);
+      transform: scale(0.94);
+    }
+
+    .touch-btn.btn-hop {
+      width: 82px;
+      background: rgba(255, 215, 0, 0.25);
+      border-color: var(--gold);
+    }
+
+    .touch-btn.btn-small {
+      width: 54px;
+      height: 46px;
+      font-size: 12px;
+      border-radius: 14px;
+    }
+
+    #webgl-fallback {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #120b38, #08061a);
+      padding: 24px;
+      text-align: center;
+    }
+
+    @media (max-width: 760px) {
+      .controls-mini { display: none; }
+      .hud-stat { padding: 6px 10px; }
+      .hud-val { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+  <canvas id="speed-streaks"></canvas>
+  <div id="cyber-vignette"></div>
+
+  <div id="webgl-fallback">
+    <div class="card">
+      <h2 class="game-title" style="font-size:32px;">WebGL Unavailable</h2>
+      <p class="subtitle">Your browser context lost or could not initialize 3D WebGL graphics. Reload the page or enable hardware acceleration to play SkySpoke Rebound.</p>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-top">
+      <div class="pill-group">
+        <div class="hud-stat">
+          <span class="hud-label">Time</span>
+          <span class="hud-val val-cyan" id="hud-time">00:00.0</span>
+        </div>
+        <div class="hud-stat">
+          <span class="hud-label">Bounces</span>
+          <span class="hud-val val-coral" id="hud-bounces">0</span>
+        </div>
+        <div class="hud-stat">
+          <span class="hud-label">Streak</span>
+          <span class="hud-val val-gold" id="hud-streak">x0</span>
+        </div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-header">
+          <span id="hud-cp-label">CP 0 / 8</span>
+          <span id="hud-pct">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="hud-progress-fill"></div>
+        </div>
+      </div>
+
+      <div class="pill-group">
+        <button class="hud-btn" id="btn-pov" title="Switch Camera View (V)">View: CHASE (V)</button>
+        <button class="hud-btn" id="btn-bloom" title="Toggle Bloom Glow">FX: HIGH</button>
+        <button class="hud-btn" id="btn-mute" title="Mute Audio (M)">Audio: On</button>
+        <button class="hud-btn" id="btn-pause" title="Pause (Esc / P)">Pause</button>
+      </div>
+    </div>
+
+    <div id="visor-overlay">
+      <div class="visor-bracket visor-tl"></div>
+      <div class="visor-bracket visor-tr"></div>
+      <div class="visor-bracket visor-bl"></div>
+      <div class="visor-bracket visor-br"></div>
+      <div class="visor-crosshair"></div>
+      <div class="visor-tag">OPTIC-VISOR // FPV</div>
+    </div>
+
+    <div id="toast-banner">CHECKPOINT!</div>
+
+    <div id="rebound-prompt">
+      <div class="rebound-ring-box">
+        <div class="rebound-ring-outer" id="rebound-ring-outer"></div>
+        <div class="rebound-ring-target">SPACE</div>
+      </div>
+      <div class="rebound-label" id="rebound-label-text">TIME REBOUND BOOST!</div>
+    </div>
+
+    <div class="hud-bottom-left">
+      <div class="anchor-badge">
+        <div class="cooldown-ring-wrap">
+          <svg viewBox="0 0 36 36">
+            <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="3.5"></circle>
+            <circle id="anchor-ring" cx="18" cy="18" r="15" fill="none" stroke="#00f5ff" stroke-width="3.5"
+                    stroke-dasharray="94.25" stroke-dashoffset="0" stroke-linecap="round"></circle>
+          </svg>
+          <span class="cooldown-key">E</span>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;" id="anchor-status">Anchor Ready</div>
+          <div style="font-size:11px;color:#94a3b8;">Speed: <span id="hud-speed">0</span> km/h</div>
+        </div>
+      </div>
+      <div class="controls-mini">
+        <span class="key-chip">W/S</span> Pedal/Tilt &middot;
+        <span class="key-chip">A/D</span> Steer/Air &middot;
+        <span class="key-chip">SPACE</span> Hop / Rebound Boost &middot;
+        <span class="key-chip">E</span> Anchor &middot;
+        <span class="key-chip">V</span> POV &middot;
+        <span class="key-chip">R</span> Bounce Back
+      </div>
+    </div>
+  </div>
+
+  <!-- TOUCH CONTROLS -->
+  <div id="touch-controls">
+    <div class="touch-cluster-left">
+      <button class="touch-btn" data-key="left">◀</button>
+      <button class="touch-btn" data-key="right">▶</button>
+    </div>
+    <div class="touch-cluster-right">
+      <div class="touch-row">
+        <button class="touch-btn btn-small" id="touch-pov">POV</button>
+        <button class="touch-btn btn-small" id="touch-anchor">E</button>
+        <button class="touch-btn btn-small" id="touch-retry">R</button>
+      </div>
+      <div class="touch-row">
+        <button class="touch-btn" data-key="down">BRAKE</button>
+        <button class="touch-btn" data-key="up">GO</button>
+        <button class="touch-btn btn-hop" data-key="jump">HOP</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TITLE SCREEN -->
+  <div class="overlay-screen" id="screen-title">
+    <div class="card">
+      <div class="jam-kicker">Made for Haven by Hack Club, Lucknow</div>
+      <h1 class="game-title">SKYSPOKE<br>REBOUND</h1>
+      <p class="subtitle">Carve across a neon cyber-skyline bicycle obby! Every crash snaps a glowing elastic tether—<strong>Bounce Back</strong> to your checkpoint and nail the timed boost.</p>
+      <div class="howto-line">
+        <strong>How to Play:</strong> Ride with <strong>WASD / Arrows</strong>, hop with <strong>Space</strong>, drop custom beacons with <strong>E</strong>, and press <strong>Space</strong> right as you snap back to launch a <strong>Rebound Boost</strong>!
+      </div>
+      <button class="primary-btn" id="btn-start">RIDE NOW</button>
+      <button class="secondary-btn" id="btn-download-title">Download Standalone HTML (skyspoke-rebound.html)</button>
+      <div class="best-record" id="title-best">Best Time: --:--.- · Best Boost Streak: 0</div>
+    </div>
+  </div>
+
+  <!-- PAUSE SCREEN -->
+  <div class="overlay-screen hidden" id="screen-pause">
+    <div class="card">
+      <div class="jam-kicker">Game Paused</div>
+      <h2 class="game-title" style="font-size:38px;">TAKE A BREATHER</h2>
+      <p class="subtitle">Checkpoints are locked in. Ready to drop back onto the cyber-track?</p>
+      <button class="primary-btn" id="btn-resume">RESUME RIDE</button>
+      <button class="secondary-btn" id="btn-pause-bounce">Bounce Back to Checkpoint (R)</button>
+      <button class="secondary-btn" id="btn-pause-restart">Restart Whole Course</button>
+      <button class="secondary-btn" id="btn-download-pause">Download Standalone HTML</button>
+    </div>
+  </div>
+
+  <!-- FINISH SCREEN -->
+  <div class="overlay-screen hidden" id="screen-finish">
+    <div class="card">
+      <div class="jam-kicker">Course Conquered!</div>
+      <h2 class="game-title" style="font-size:40px;">HAVEN CHAMPION!</h2>
+      <p class="subtitle" id="finish-msg">You bounced back from every wipeout and owned the cyber skyline!</p>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="s-label">Run Time</div>
+          <div class="s-val val-cyan" id="fin-time">00:00.0</div>
+        </div>
+        <div class="stat-box">
+          <div class="s-label">Bounce-Backs</div>
+          <div class="s-val val-coral" id="fin-bounces">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="s-label">Rebound Boosts</div>
+          <div class="s-val val-gold" id="fin-boosts">0</div>
+        </div>
+      </div>
+      <button class="primary-btn" id="btn-replay">PLAY AGAIN (R)</button>
+      <button class="secondary-btn" id="btn-download-finish">Download Standalone HTML</button>
+      <div class="best-record" id="finish-best">Best Time: --:--.-</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+    // =========================================================================
+    // 1. TUNABLE GAMEPLAY CONSTANTS (Physics & Bounce Back preserved)
+    // =========================================================================
+    const CONFIG = {
+      FIXED_DT: 1 / 60,
+      GRAVITY: 28.0,
+      BIKE_RADIUS: 0.45,
+      ACCEL: 34.0,
+      BRAKE_DECEL: 38.0,
+      REVERSE_MAX: 7.5,
+      MAX_SPEED: 22.0,
+      BOOST_SPEED: 29.5,
+      GROUND_DRAG: 1.45,
+      JUMP_VEL: 11.8,
+      BOUNCE_PAD_VEL: 21.8,
+      REBOUND_FWD_SPEED: 26.5,
+      REBOUND_UP_VEL: 13.8,
+      STEER_RATE: 2.35,
+      AIR_STEER_RATE: 0.95,
+      AIR_PITCH_RATE: 2.3,
+      ANCHOR_COOLDOWN: 6.0,
+      FALL_VOID_Y: -13.5,
+      HITSTOP_SEC: 0.032,
+      SAVE_KEY: 'skyspoke_rebound_save_v1'
+    };
+
+    const STATE = {
+      TITLE: 'TITLE',
+      PLAYING: 'PLAYING',
+      WIPEOUT: 'WIPEOUT',
+      BOUNCE_BACK: 'BOUNCE_BACK',
+      PAUSED: 'PAUSED',
+      FINISH: 'FINISH'
+    };
+
+    // =========================================================================
+    // 2. FUTURISTIC WEB AUDIO SOUNDSCAPE (Zero External Audio Files)
+    // =========================================================================
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.master = null;
+        this.muted = false;
+        this.musicTimer = null;
+        this.step = 0;
+        this.coastTickAccum = 0;
+
+        // Continuous hover-chain drive synth nodes
+        this.humOsc = null;
+        this.humSub = null;
+        this.humFilter = null;
+        this.humGain = null;
+        this.noiseBuf = null;
+      }
+
+      init() {
+        if (this.ctx) {
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          return;
+        }
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        this.ctx = new AudioCtx();
+
+        // Subtle master dynamics compressor so layered synths never clip
+        const comp = this.ctx.createDynamicsCompressor();
+        comp.threshold.value = -14;
+        comp.knee.value = 18;
+        comp.ratio.value = 4;
+        comp.connect(this.ctx.destination);
+
+        this.master = this.ctx.createGain();
+        this.master.gain.value = this.muted ? 0 : 0.45;
+        this.master.connect(comp);
+
+        // Pre-bake reusable white-noise buffer for filtered bursts
+        const len = Math.floor(this.ctx.sampleRate * 0.5);
+        this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const data = this.noiseBuf.getChannelData(0);
+        for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+
+        this._setupContinuousHum();
+        this.startGroove();
+      }
+
+      _setupContinuousHum() {
+        if (!this.ctx) return;
+        this.humOsc = this.ctx.createOscillator();
+        this.humSub = this.ctx.createOscillator();
+        this.humFilter = this.ctx.createBiquadFilter();
+        this.humGain = this.ctx.createGain();
+
+        this.humOsc.type = 'sawtooth';
+        this.humOsc.frequency.value = 72;
+        this.humSub.type = 'triangle';
+        this.humSub.frequency.value = 36;
+
+        this.humFilter.type = 'lowpass';
+        this.humFilter.frequency.value = 220;
+        this.humFilter.Q.value = 3.2;
+
+        this.humGain.gain.value = 0.0001;
+
+        this.humOsc.connect(this.humFilter);
+        this.humSub.connect(this.humFilter);
+        this.humFilter.connect(this.humGain);
+        this.humGain.connect(this.master);
+
+        this.humOsc.start();
+        this.humSub.start();
+      }
+
+      updateDriveHum(speed, grounded, state, isBoosted) {
+        if (!this.ctx || !this.humGain) return;
+        const now = this.ctx.currentTime;
+        const active = !this.muted && this.ctx.state === 'running' && (state === STATE.PLAYING || state === STATE.BOUNCE_BACK);
+        if (!active) {
+          this.humGain.gain.setTargetAtTime(0.0001, now, 0.06);
+          return;
+        }
+        const normSpd = Math.min(1.3, speed / CONFIG.MAX_SPEED);
+        const baseFreq = 68 + normSpd * 98 + (isBoosted ? 36 : 0);
+        this.humOsc.frequency.setTargetAtTime(baseFreq, now, 0.05);
+        this.humSub.frequency.setTargetAtTime(baseFreq * 0.5, now, 0.05);
+        this.humFilter.frequency.setTargetAtTime(200 + normSpd * 780 + (grounded ? 120 : 0), now, 0.06);
+        const targetVol = 0.012 + normSpd * 0.052 + (isBoosted ? 0.02 : 0);
+        this.humGain.gain.setTargetAtTime(targetVol, now, 0.06);
+      }
+
+      setMuted(m) {
+        this.muted = m;
+        if (this.master && this.ctx) {
+          this.master.gain.setTargetAtTime(m ? 0 : 0.45, this.ctx.currentTime, 0.03);
+        }
+      }
+
+      startGroove() {
+        if (this.musicTimer) clearInterval(this.musicTimer);
+        // 128 BPM low-pass filtered synthwave bassline pulse + subtle cyber arp
+        const bassSeq = [
+          65.41, 65.41, 65.41, 77.78, 65.41, 65.41, 98.00, 77.78,
+          58.27, 58.27, 58.27, 65.41, 51.91, 51.91, 58.27, 65.41
+        ];
+        const arpSeq = [261.63, 311.13, 392.00, 523.25, 392.00, 311.13, 466.16, 392.00];
+
+        this.musicTimer = setInterval(() => {
+          if (!this.ctx || this.ctx.state !== 'running' || this.muted) return;
+          if (game.state !== STATE.PLAYING && game.state !== STATE.BOUNCE_BACK) return;
+
+          const now = this.ctx.currentTime;
+          const idx = this.step % 16;
+
+          // Driving low-pass filtered synthwave 16th/8th bass pulse
+          this._filteredTone(bassSeq[idx], 'sawtooth', 0.19, 0.085, 520, 180, now);
+
+          // Crisp off-beat cyber hat
+          if (this.step % 2 === 1) {
+            this._noise(0.032, 0.022, 6800, now, 'highpass');
+          }
+
+          // Ethereal synthwave shimmer arp on selected steps
+          if (this.step % 4 === 0 || this.step % 8 === 6) {
+            this._filteredTone(arpSeq[(this.step >> 1) % 8], 'triangle', 0.24, 0.032, 2200, 900, now);
+          }
+
+          this.step++;
+        }, 234);
+      }
+
+      _tone(freq, type, dur, vol, startTime = null, endRatio = 1) {
+        if (!this.ctx || this.muted) return;
+        const t = startTime || this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t);
+        if (endRatio !== 1) {
+          osc.frequency.exponentialRampToValueAtTime(Math.max(20, freq * endRatio), t + dur);
+        }
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.linearRampToValueAtTime(vol, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(gain);
+        gain.connect(this.master);
+        osc.start(t);
+        osc.stop(t + dur + 0.02);
+      }
+
+      _filteredTone(freq, type, dur, vol, fStart, fEnd, startTime = null) {
+        if (!this.ctx || this.muted) return;
+        const t = startTime || this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t);
+
+        filter.type = 'lowpass';
+        filter.Q.value = 3.5;
+        filter.frequency.setValueAtTime(fStart, t);
+        filter.frequency.exponentialRampToValueAtTime(Math.max(60, fEnd), t + dur);
+
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.linearRampToValueAtTime(vol, t + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.master);
+        osc.start(t);
+        osc.stop(t + dur + 0.02);
+      }
+
+      _noise(dur, vol, freq = 1000, startTime = null, filterType = 'highpass', endFreq = null) {
+        if (!this.ctx || this.muted || !this.noiseBuf) return;
+        const t = startTime || this.ctx.currentTime;
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.noiseBuf;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = filterType;
+        filter.frequency.setValueAtTime(freq, t);
+        if (endFreq !== null) {
+          filter.frequency.exponentialRampToValueAtTime(Math.max(80, endFreq), t + dur);
+        }
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(vol, t);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.master);
+        src.start(t);
+        src.stop(t + Math.min(0.49, dur + 0.02));
+      }
+
+      playHop() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        // Pneumatic cyber-pop + swept air whoosh
+        this._tone(185, 'sine', 0.14, 0.22, now, 3.1);
+        this._tone(340, 'triangle', 0.11, 0.11, now, 1.85);
+        this._noise(0.11, 0.12, 900, now, 'bandpass', 3200);
+      }
+
+      playLand(impact = 1) {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const v = Math.min(0.32, 0.10 + impact * 0.14);
+        // Weighted sub-bass thud + metallic mag-suspension clink
+        this._tone(115, 'sine', 0.14, v, now, 0.38);
+        this._tone(960, 'triangle', 0.06, 0.08 * Math.min(1.4, impact), now, 0.62);
+      }
+
+      playFreewheelTick() {
+        // Crisp digital ratchet tick while coasting
+        this._tone(2150, 'square', 0.014, 0.024, null, 0.68);
+      }
+
+      playBouncePad() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        this._tone(200, 'sine', 0.36, 0.26, now, 3.8);
+        this._tone(360, 'sawtooth', 0.3, 0.08, now, 2.6);
+        this._noise(0.22, 0.12, 600, now, 'bandpass', 3400);
+      }
+
+      playSpeedPad() {
+        this._filteredTone(440, 'sawtooth', 0.22, 0.11, 2400, 900);
+      }
+
+      playCheckpoint() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        // Harmonic futuristic Lydian/Maj9 arpeggio
+        [523.25, 659.25, 783.99, 987.77, 1174.66].forEach((n, i) => {
+          this._tone(n, 'triangle', 0.28, 0.14, now + i * 0.055, 1.0);
+          this._tone(n * 2, 'sine', 0.22, 0.045, now + i * 0.055, 1.0);
+        });
+      }
+
+      playAnchorDrop() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        this._tone(587.33, 'sine', 0.13, 0.15, now, 1.0);
+        this._tone(880.0, 'triangle', 0.22, 0.15, now + 0.055, 1.0);
+      }
+
+      playWipeout() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        // Power-down glitch + crunch
+        this._tone(420, 'sawtooth', 0.26, 0.18, now, 0.14);
+        this._tone(210, 'square', 0.18, 0.11, now + 0.05, 0.22);
+        this._noise(0.22, 0.22, 2400, now, 'lowpass', 280);
+      }
+
+      playElasticZip(duration) {
+        if (!this.ctx || this.muted) return;
+        const t = this.ctx.currentTime;
+        const osc1 = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+
+        osc1.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(160, t);
+        osc1.frequency.exponentialRampToValueAtTime(920, t + duration * 0.94);
+
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(240, t);
+        osc2.frequency.exponentialRampToValueAtTime(1380, t + duration * 0.94);
+
+        lfo.frequency.value = 22;
+        lfoGain.gain.value = 34;
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc1.frequency);
+
+        filter.type = 'lowpass';
+        filter.Q.value = 4.5;
+        filter.frequency.setValueAtTime(520, t);
+        filter.frequency.exponentialRampToValueAtTime(3400, t + duration * 0.9);
+
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.linearRampToValueAtTime(0.2, t + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+
+        osc1.connect(filter);
+        osc2.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.master);
+
+        osc1.start(t);
+        osc2.start(t);
+        lfo.start(t);
+        osc1.stop(t + duration + 0.03);
+        osc2.stop(t + duration + 0.03);
+        lfo.stop(t + duration + 0.03);
+      }
+
+      playReboundBoost() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        // Explosive plasma-boost roar + shimmering chord
+        this._tone(110, 'sine', 0.35, 0.28, now, 0.45);
+        this._noise(0.42, 0.22, 420, now, 'bandpass', 4800);
+        [523.25, 783.99, 1046.5, 1318.51, 1567.98].forEach((n, i) => {
+          this._tone(n, 'triangle', 0.34, 0.14, now + i * 0.022, 1.06);
+        });
+      }
+
+      playFinish() {
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98, 2093.0].forEach((n, i) => {
+          this._tone(n, 'triangle', 0.4, 0.16, now + i * 0.075, 1.0);
+        });
+      }
+    }
+
+    const sfx = new SoundEngine();
+
+    // =========================================================================
+    // 3. THREE.JS RENDERER, SOFTWARE-WEBGL GUARD, ROOM ENVIRONMENT & BLOOM
+    // =========================================================================
+    const isSoftwareGl = (() => {
+      try {
+        const probe = document.createElement('canvas');
+        const gl = probe.getContext('webgl2') || probe.getContext('webgl');
+        if (!gl) return true;
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        const param = ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER;
+        const gpu = String(gl.getParameter(param) || '');
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
+      } catch (_) {
+        return false;
+      }
+    })();
+
+    const canvas = document.getElementById('game-canvas');
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: !isSoftwareGl,
+        powerPreference: 'high-performance'
+      });
+    } catch (_) {
+      document.getElementById('webgl-fallback').style.display = 'flex';
+      throw new Error('WebGL unavailable');
+    }
+
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = !isSoftwareGl;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+
+    const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x100828, 0.0029);
+
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.08).texture;
+    pmremGenerator.dispose();
+
+    const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.12, 1350);
+
+    // Clean direct rendering without blinding bloom/glare bleed
+    let composer = null;
+    let bloomPass = null;
+
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      togglePause(true);
+      document.getElementById('webgl-fallback').style.display = 'flex';
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      document.getElementById('webgl-fallback').style.display = 'none';
+    });
+
+    // =========================================================================
+    // 4. PROCEDURAL SCI-FI TEXTURES (Cyber Grids, Hex Energy, Animated Hazards, Neon Treads)
+    // =========================================================================
+    const texCache = {};
+    let animatedHazardTex = null;
+
+    function makeCanvas(size = 256) {
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      return { c, ctx: c.getContext('2d') };
+    }
+
+    function configureTex(c, repeat = true, isColor = true) {
+      const tex = new THREE.CanvasTexture(c);
+      if (repeat) {
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+      }
+      tex.colorSpace = isColor ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+      tex.anisotropy = maxAnisotropy;
+      return tex;
+    }
+
+    // Returns { map, emissiveMap } for glossy carbon-fiber cyber-grid platforms
+    function getCyberGridTextures(baseHex, gridHex, nodeHex) {
+      const key = `cyber_${baseHex}_${gridHex}_${nodeHex}`;
+      if (texCache[key]) return texCache[key];
+
+      const { c: dc, ctx: dctx } = makeCanvas(256);
+      const { c: ec, ctx: ectx } = makeCanvas(256);
+
+      // Base carbon-fiber weave pattern
+      dctx.fillStyle = baseHex;
+      dctx.fillRect(0, 0, 256, 256);
+      ectx.fillStyle = '#000000';
+      ectx.fillRect(0, 0, 256, 256);
+
+      dctx.fillStyle = 'rgba(255,255,255,0.035)';
+      for (let y = 0; y < 256; y += 16) {
+        for (let x = (y % 32 === 0 ? 0 : 8); x < 256; x += 16) {
+          dctx.fillRect(x, y, 8, 8);
+        }
+      }
+
+      // Crisp cyber grid seams
+      const drawGrid = (ctx, col, lw) => {
+        ctx.strokeStyle = col;
+        ctx.lineWidth = lw;
+        ctx.strokeRect(2, 2, 252, 252);
+        ctx.beginPath();
+        ctx.moveTo(128, 0); ctx.lineTo(128, 256);
+        ctx.moveTo(0, 128); ctx.lineTo(256, 128);
+        ctx.stroke();
+
+        // Diagonal circuit corner ticks
+        ctx.beginPath();
+        ctx.moveTo(24, 0); ctx.lineTo(0, 24);
+        ctx.moveTo(232, 0); ctx.lineTo(256, 24);
+        ctx.moveTo(0, 232); ctx.lineTo(24, 256);
+        ctx.moveTo(256, 232); ctx.lineTo(232, 256);
+        ctx.stroke();
+      };
+
+      drawGrid(dctx, gridHex, 4);
+      drawGrid(ectx, gridHex, 3);
+
+      // Glowing corner/center micro-nodes
+      const nodes = [[64, 64], [192, 64], [64, 192], [192, 192]];
+      for (const [nx, ny] of nodes) {
+        dctx.fillStyle = nodeHex;
+        dctx.beginPath();
+        dctx.arc(nx, ny, 7, 0, Math.PI * 2);
+        dctx.fill();
+
+        ectx.fillStyle = nodeHex;
+        ectx.beginPath();
+        ectx.arc(nx, ny, 6, 0, Math.PI * 2);
+        ectx.fill();
+      }
+
+      const result = {
+        map: configureTex(dc, true, true),
+        emissiveMap: configureTex(ec, true, true)
+      };
+      texCache[key] = result;
+      return result;
+    }
+
+    // Returns { map, emissiveMap } with glowing hexagonal energy panels
+    function getHexPanelTextures(baseHex, hexColor) {
+      const key = `hex_${baseHex}_${hexColor}`;
+      if (texCache[key]) return texCache[key];
+
+      const { c: dc, ctx: dctx } = makeCanvas(256);
+      const { c: ec, ctx: ectx } = makeCanvas(256);
+
+      dctx.fillStyle = baseHex;
+      dctx.fillRect(0, 0, 256, 256);
+      ectx.fillStyle = '#000000';
+      ectx.fillRect(0, 0, 256, 256);
+
+      const drawHex = (ctx, cx, cy, r, fill, stroke, lw) => {
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = (Math.PI / 3) * i + Math.PI / 6;
+          const px = cx + r * Math.cos(a);
+          const py = cy + r * Math.sin(a);
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+      };
+
+      const centers = [[64, 64], [192, 64], [128, 128], [64, 192], [192, 192]];
+      for (const [cx, cy] of centers) {
+        drawHex(dctx, cx, cy, 42, 'rgba(255,255,255,0.04)', hexColor, 4);
+        drawHex(ectx, cx, cy, 42, null, hexColor, 3.5);
+        drawHex(dctx, cx, cy, 18, hexColor, null, 0);
+        drawHex(ectx, cx, cy, 14, hexColor, null, 0);
+      }
+
+      const result = {
+        map: configureTex(dc, true, true),
+        emissiveMap: configureTex(ec, true, true)
+      };
+      texCache[key] = result;
+      return result;
+    }
+
+    function getAnimatedHazardTexture() {
+      if (animatedHazardTex) return animatedHazardTex;
+      const { c, ctx } = makeCanvas(256);
+      ctx.fillStyle = '#190616';
+      ctx.fillRect(0, 0, 256, 256);
+
+      // Glowing magenta-red hazard chevrons
+      for (let i = -256; i < 512; i += 64) {
+        ctx.fillStyle = i % 128 === 0 ? '#ff007f' : '#ff3b30';
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i + 28, 0);
+        ctx.lineTo(i - 228, 256);
+        ctx.lineTo(i - 256, 256);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Hot gold center edge highlight
+      ctx.strokeStyle = '#ffd700';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(2, 2, 252, 252);
+
+      animatedHazardTex = configureTex(c, true, true);
+      return animatedHazardTex;
+    }
+
+    function getCheckerTexture() {
+      if (texCache.checker) return texCache.checker;
+      const { c, ctx } = makeCanvas(256);
+      const sq = 64;
+      for (let y = 0; y < 4; y++) {
+        for (let x = 0; x < 4; x++) {
+          ctx.fillStyle = (x + y) % 2 === 0 ? '#00f5ff' : '#0d0c24';
+          ctx.fillRect(x * sq, y * sq, sq, sq);
+        }
+      }
+      ctx.strokeStyle = '#ffd700';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(2, 2, 252, 252);
+      texCache.checker = configureTex(c, true, true);
+      return texCache.checker;
+    }
+
+    function getNeonTireTextures() {
+      if (texCache.neonTire) return texCache.neonTire;
+      const { c: dc, ctx: dctx } = makeCanvas(128);
+      const { c: ec, ctx: ectx } = makeCanvas(128);
+
+      dctx.fillStyle = '#111420';
+      dctx.fillRect(0, 0, 128, 128);
+      ectx.fillStyle = '#000000';
+      ectx.fillRect(0, 0, 128, 128);
+
+      // Glowing cyan twin sidewall stripes
+      dctx.fillStyle = '#00f5ff';
+      dctx.fillRect(0, 10, 128, 10);
+      dctx.fillRect(0, 108, 128, 10);
+      ectx.fillStyle = '#00f5ff';
+      ectx.fillRect(0, 10, 128, 10);
+      ectx.fillRect(0, 108, 128, 10);
+
+      // Glowing magenta cyber chevrons down the tread center
+      dctx.strokeStyle = '#ff007f';
+      dctx.lineWidth = 6;
+      ectx.strokeStyle = '#ff007f';
+      ectx.lineWidth = 5;
+      for (let x = 0; x < 128; x += 32) {
+        for (const ctx of [dctx, ectx]) {
+          ctx.beginPath();
+          ctx.moveTo(x, 38);
+          ctx.lineTo(x + 14, 64);
+          ctx.lineTo(x, 90);
+          ctx.stroke();
+        }
+      }
+
+      const map = configureTex(dc, true, true);
+      const emissiveMap = configureTex(ec, true, true);
+      map.repeat.set(6, 1);
+      emissiveMap.repeat.set(6, 1);
+      texCache.neonTire = { map, emissiveMap };
+      return texCache.neonTire;
+    }
+
+    function getPadGlowTexture(colorStr) {
+      const key = `pad_${colorStr}`;
+      if (texCache[key]) return texCache[key];
+      const { c, ctx } = makeCanvas(256);
+      ctx.clearRect(0, 0, 256, 256);
+      const g = ctx.createRadialGradient(128, 128, 16, 128, 128, 124);
+      g.addColorStop(0, 'rgba(255,255,255,0.98)');
+      g.addColorStop(0.42, colorStr);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 256, 256);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.arc(128, 128, 92, 0, Math.PI * 2);
+      ctx.stroke();
+      texCache[key] = configureTex(c, false, true);
+      return texCache[key];
+    }
+
+    function createScaledBoxGeometry(w, h, d, tileScale = 2.6) {
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const uv = geo.attributes.uv;
+      const norm = geo.attributes.normal;
+      for (let i = 0; i < uv.count; i++) {
+        const nx = Math.abs(norm.getX(i));
+        const ny = Math.abs(norm.getY(i));
+        const u = uv.getX(i);
+        const v = uv.getY(i);
+        if (ny > 0.5) {
+          uv.setXY(i, u * (w / tileScale), v * (d / tileScale));
+        } else if (nx > 0.5) {
+          uv.setXY(i, u * (d / tileScale), v * (h / tileScale));
+        } else {
+          uv.setXY(i, u * (w / tileScale), v * (h / tileScale));
+        }
+      }
+      uv.needsUpdate = true;
+      return geo;
+    }
+
+    // Rain-slicked asphalt/carbon micro-grain bump + puddle roughness maps for realistic PBR sheen
+    function getWetAsphaltSurfaceMaps() {
+      if (texCache.wetAsphalt) return texCache.wetAsphalt;
+      const { c: bc, ctx: bctx } = makeCanvas(512);
+      const { c: rc, ctx: rctx } = makeCanvas(512);
+
+      bctx.fillStyle = '#808080';
+      bctx.fillRect(0, 0, 512, 512);
+      rctx.fillStyle = '#8e8e8e'; // damp satin base roughness (~0.55)
+      rctx.fillRect(0, 0, 512, 512);
+
+      // Fine asphalt / machined carbon micro-speckle
+      for (let i = 0; i < 6500; i++) {
+        const x = (i * 193) % 512;
+        const y = (i * 317 + ((i >> 4) * 37)) % 512;
+        const v = 96 + ((i * 73) % 72);
+        bctx.fillStyle = `rgb(${v},${v},${v})`;
+        bctx.fillRect(x, y, 2, 2);
+      }
+
+      // Smooth reflective rain puddles (low roughness ~0.07 + flat bump)
+      const puddles = [
+        [110, 140, 86], [360, 110, 74], [250, 290, 108],
+        [90, 410, 68], [415, 385, 82], [185, 65, 58]
+      ];
+      for (const [px, py, pr] of puddles) {
+        const rg = rctx.createRadialGradient(px, py, pr * 0.15, px, py, pr);
+        rg.addColorStop(0, 'rgba(14,14,14,0.95)');
+        rg.addColorStop(0.65, 'rgba(26,26,26,0.82)');
+        rg.addColorStop(1, 'rgba(142,142,142,0)');
+        rctx.fillStyle = rg;
+        rctx.beginPath();
+        rctx.arc(px, py, pr, 0, Math.PI * 2);
+        rctx.fill();
+
+        const bg = bctx.createRadialGradient(px, py, 0, px, py, pr * 0.9);
+        bg.addColorStop(0, 'rgba(128,128,128,0.85)');
+        bg.addColorStop(1, 'rgba(128,128,128,0)');
+        bctx.fillStyle = bg;
+        bctx.beginPath();
+        bctx.arc(px, py, pr, 0, Math.PI * 2);
+        bctx.fill();
+      }
+
+      // Machined deck seam grooves
+      bctx.strokeStyle = '#383838';
+      bctx.lineWidth = 3;
+      bctx.strokeRect(2, 2, 508, 508);
+      bctx.beginPath();
+      bctx.moveTo(256, 0); bctx.lineTo(256, 512);
+      bctx.moveTo(0, 256); bctx.lineTo(512, 256);
+      bctx.stroke();
+
+      const result = {
+        bumpMap: configureTex(bc, true, false),
+        roughnessMap: configureTex(rc, true, false)
+      };
+      texCache.wetAsphalt = result;
+      return result;
+    }
+
+    // Diagonal carbon-kevlar weave bump + roughness maps for close-up bike chassis realism
+    function getCarbonSurfaceMaps() {
+      if (texCache.carbonMaps) return texCache.carbonMaps;
+      const { c: bc, ctx: bctx } = makeCanvas(128);
+      const { c: rc, ctx: rctx } = makeCanvas(128);
+
+      bctx.fillStyle = '#707070';
+      bctx.fillRect(0, 0, 128, 128);
+      rctx.fillStyle = '#383838';
+      rctx.fillRect(0, 0, 128, 128);
+
+      for (let y = 0; y < 128; y += 8) {
+        for (let x = 0; x < 128; x += 8) {
+          const alt = ((x + y) / 8) % 2 === 0;
+          bctx.fillStyle = alt ? '#b8b8b8' : '#585858';
+          bctx.fillRect(x, y, 7, 4);
+          rctx.fillStyle = alt ? '#242424' : '#525252';
+          rctx.fillRect(x, y, 7, 4);
+        }
+      }
+
+      const bumpMap = configureTex(bc, true, false);
+      const roughnessMap = configureTex(rc, true, false);
+      bumpMap.repeat.set(4, 4);
+      roughnessMap.repeat.set(4, 4);
+      texCache.carbonMaps = { bumpMap, roughnessMap };
+      return texCache.carbonMaps;
+    }
+
+    // Lit cyberpunk glass-facade window grids for distant megastructures
+    function getSkyscraperWindowTextures() {
+      if (texCache.skyWindows) return texCache.skyWindows;
+      const { c: dc, ctx: dctx } = makeCanvas(256);
+      const { c: ec, ctx: ectx } = makeCanvas(256);
+
+      dctx.fillStyle = '#070718';
+      dctx.fillRect(0, 0, 256, 256);
+      ectx.fillStyle = '#000000';
+      ectx.fillRect(0, 0, 256, 256);
+
+      const cols = ['#00f5ff', '#ff007f', '#ffd700', '#93c5fd', '#c084fc'];
+      for (let row = 8; row < 248; row += 12) {
+        const isNeonBand = row % 60 === 8;
+        for (let col = 8; col < 248; col += 16) {
+          const hash = (row * 31 + col * 17) % 19;
+          if (!isNeonBand && hash > 9) continue;
+          const color = isNeonBand
+            ? cols[(row / 60) % 2 === 0 ? 0 : 1]
+            : cols[hash % cols.length];
+          const alpha = isNeonBand ? 0.9 : 0.35 + (hash % 4) * 0.16;
+          dctx.fillStyle = color;
+          dctx.globalAlpha = alpha;
+          dctx.fillRect(col, row, 10, 6);
+
+          ectx.fillStyle = color;
+          ectx.globalAlpha = alpha;
+          ectx.fillRect(col, row, 10, 6);
+        }
+      }
+      dctx.globalAlpha = 1;
+      ectx.globalAlpha = 1;
+
+      const map = configureTex(dc, true, true);
+      const emissiveMap = configureTex(ec, true, true);
+      map.repeat.set(2, 6);
+      emissiveMap.repeat.set(2, 6);
+      texCache.skyWindows = { map, emissiveMap };
+      return texCache.skyWindows;
+    }
+
+    function getCyberBillboardTexture(variant) {
+      const key = `billboard_${variant}`;
+      if (texCache[key]) return texCache[key];
+      const { c, ctx } = makeCanvas(256);
+      const themes = [
+        { bg: '#080b22', accent: '#00f5ff', sub: '#ff007f', title: 'REBOUND', code: 'SYNC // 2099' },
+        { bg: '#16061c', accent: '#ff007f', sub: '#ffd700', title: 'HAVEN-LKO', code: 'APEX CIRCUIT' },
+        { bg: '#071422', accent: '#ffd700', sub: '#00f5ff', title: 'CYBER-BMX', code: 'HYPER DRIVE' },
+        { bg: '#0c0820', accent: '#38f9a5', sub: '#ff007f', title: 'NEO-TETHER', code: 'OVERDRIVE' }
+      ];
+      const th = themes[variant % themes.length];
+      ctx.fillStyle = th.bg;
+      ctx.fillRect(0, 0, 256, 256);
+
+      // Scanlines
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      for (let y = 0; y < 256; y += 6) ctx.fillRect(0, y, 256, 2);
+
+      // Neon frame
+      ctx.strokeStyle = th.accent;
+      ctx.lineWidth = 8;
+      ctx.strokeRect(10, 10, 236, 236);
+      ctx.strokeStyle = th.sub;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(20, 20, 216, 216);
+
+      // Futuristic emblem + typography
+      ctx.fillStyle = th.sub;
+      ctx.fillRect(28, 36, 200, 18);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 34px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(th.title, 128, 134);
+      ctx.fillStyle = th.accent;
+      ctx.font = 'bold 20px monospace';
+      ctx.fillText(th.code, 128, 174);
+
+      // Stylized cyber glyph bars
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = i % 2 === 0 ? th.accent : th.sub;
+        ctx.fillRect(36 + i * 32, 202, 22, 10);
+      }
+
+      texCache[key] = configureTex(c, false, true);
+      return texCache[key];
+    }
+
+    function getSearchlightBeamTexture() {
+      if (texCache.beamTex) return texCache.beamTex;
+      const { c, ctx } = makeCanvas(128);
+      const grad = ctx.createLinearGradient(0, 0, 0, 128);
+      grad.addColorStop(0.0, 'rgba(255,255,255,0.0)');
+      grad.addColorStop(0.45, 'rgba(255,255,255,0.16)');
+      grad.addColorStop(1.0, 'rgba(255,255,255,0.55)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 128, 128);
+      texCache.beamTex = configureTex(c, false, true);
+      return texCache.beamTex;
+    }
+
+    // =========================================================================
+    // 5. CYBERPUNK NIGHT SKYLINE, BILLBOARDS, SEARCHLIGHTS, TRAFFIC & RAIN
+    // =========================================================================
+    (function buildCyberSky() {
+      const { c, ctx } = makeCanvas(1024);
+      const grad = ctx.createLinearGradient(0, 0, 0, 1024);
+      grad.addColorStop(0.0, '#02020a');
+      grad.addColorStop(0.32, '#0c0628');
+      grad.addColorStop(0.50, '#230b4a');
+      grad.addColorStop(0.58, '#36105e');
+      grad.addColorStop(0.68, '#130a32');
+      grad.addColorStop(1.0, '#03020c');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1024, 1024);
+
+      // Upper sky stars
+      for (let i = 0; i < 460; i++) {
+        const sx = (i * 197) % 1024;
+        const sy = (i * 113) % 500;
+        const r = (i % 5 === 0) ? 1.8 : 0.9;
+        ctx.fillStyle = i % 7 === 0 ? 'rgba(0,245,255,0.78)' : i % 9 === 0 ? 'rgba(255,0,127,0.65)' : 'rgba(255,255,255,0.68)';
+        ctx.beginPath();
+        ctx.arc(sx, sy, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Neon city smog horizon band
+      const band = ctx.createLinearGradient(0, 465, 0, 650);
+      band.addColorStop(0.0, 'rgba(0,245,255,0)');
+      band.addColorStop(0.45, 'rgba(255,0,127,0.28)');
+      band.addColorStop(0.65, 'rgba(0,245,255,0.22)');
+      band.addColorStop(1.0, 'rgba(0,245,255,0)');
+      ctx.fillStyle = band;
+      ctx.fillRect(0, 465, 1024, 185);
+
+      const skyTex = new THREE.CanvasTexture(c);
+      skyTex.colorSpace = THREE.SRGBColorSpace;
+      const skyMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(980, 32, 20),
+        new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false })
+      );
+      scene.add(skyMesh);
+    })();
+
+    // Balanced hemisphere fill + clean directional key lighting (zero harsh glare)
+    const hemiLight = new THREE.HemisphereLight(0x7dd3fc, 0x1e0e42, 0.92);
+    scene.add(hemiLight);
+
+    const sunOffset = new THREE.Vector3(26, 44, 22);
+    const sunLight = new THREE.DirectionalLight(0xe0f2fe, 1.55);
+    sunLight.position.copy(sunOffset);
+    sunLight.castShadow = !isSoftwareGl;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.near = 4;
+    sunLight.shadow.camera.far = 145;
+    const dCam = 35;
+    sunLight.shadow.camera.left = -dCam;
+    sunLight.shadow.camera.right = dCam;
+    sunLight.shadow.camera.top = dCam;
+    sunLight.shadow.camera.bottom = -dCam;
+    sunLight.shadow.bias = -0.0005;
+    sunLight.shadow.normalBias = 0.02;
+    scene.add(sunLight);
+    scene.add(sunLight.target);
+
+    // Subtle cool & warm rim fill without harsh specular glare
+    const rimLightCyan = new THREE.DirectionalLight(0x00f5ff, 0.38);
+    rimLightCyan.position.set(-28, 18, -36);
+    scene.add(rimLightCyan);
+
+    const rimLightMagenta = new THREE.DirectionalLight(0xff007f, 0.25);
+    rimLightMagenta.position.set(28, 12, -32);
+    scene.add(rimLightMagenta);
+
+    const bgSkyRings = [];
+    const bgBillboards = [];
+    const bgSearchlights = [];
+    const cyberTraffic = [];
+
+    (function buildCyberSkyline() {
+      const towerCount = 56;
+      const winTex = getSkyscraperWindowTextures();
+      const towerGeo = new THREE.BoxGeometry(1, 1, 1);
+      const towerMat = new THREE.MeshStandardMaterial({
+        color: 0x10122c,
+        map: winTex.map,
+        emissive: 0xffffff,
+        emissiveMap: winTex.emissiveMap,
+        emissiveIntensity: 0.65,
+        metalness: 0.3,
+        roughness: 0.65
+      });
+      const towerInst = new THREE.InstancedMesh(towerGeo, towerMat, towerCount);
+
+      const crownGeo = new THREE.BoxGeometry(1.04, 0.035, 1.04);
+      const crownMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const crownInst = new THREE.InstancedMesh(crownGeo, crownMat, towerCount);
+
+      const stripGeo = new THREE.BoxGeometry(0.08, 0.85, 1.03);
+      const stripMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const stripInst = new THREE.InstancedMesh(stripGeo, stripMat, towerCount);
+
+      const dummy = new THREE.Object3D();
+      const palette = [new THREE.Color(0x00f5ff), new THREE.Color(0xff007f), new THREE.Color(0xffd700)];
+
+      for (let i = 0; i < towerCount; i++) {
+        const side = i % 2 === 0 ? -1 : 1;
+        const lane = Math.floor(i / 2);
+        const distOut = 48 + ((i * 23) % 72);
+        const x = side * distOut + Math.sin(i * 1.7) * 8;
+        const z = 45 - lane * 16.5;
+        const h = 48 + ((i * 17) % 76);
+        const w = 7 + (i % 5) * 2.4;
+        const d = 7 + ((i * 3) % 4) * 2.4;
+        const baseY = -62 + h * 0.5;
+
+        dummy.position.set(x, baseY, z);
+        dummy.scale.set(w, h, d);
+        dummy.rotation.set(0, 0, 0);
+        dummy.updateMatrix();
+        towerInst.setMatrixAt(i, dummy.matrix);
+
+        dummy.position.set(x, baseY + h * 0.46, z);
+        dummy.scale.set(w, h, d);
+        dummy.updateMatrix();
+        crownInst.setMatrixAt(i, dummy.matrix);
+        crownInst.setColorAt(i, palette[i % palette.length]);
+
+        dummy.position.set(x, baseY, z);
+        dummy.scale.set(w, h, d);
+        dummy.updateMatrix();
+        stripInst.setMatrixAt(i, dummy.matrix);
+        stripInst.setColorAt(i, palette[(i + 1) % palette.length]);
+      }
+
+      towerInst.computeBoundingSphere();
+      crownInst.computeBoundingSphere();
+      stripInst.computeBoundingSphere();
+      scene.add(towerInst);
+      scene.add(crownInst);
+      scene.add(stripInst);
+
+      // Floating Geometric Light Rings in the skyline
+      const ringColors = [0x00f5ff, 0xff007f, 0xffd700];
+      for (let i = 0; i < 16; i++) {
+        const side = i % 2 === 0 ? 1 : -1;
+        const radius = 6 + (i % 4) * 2.8;
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(radius, 0.24, 10, 36),
+          new THREE.MeshBasicMaterial({ color: ringColors[i % 3], transparent: true, opacity: 0.78 })
+        );
+        ring.position.set(
+          side * (34 + (i % 3) * 18),
+          6 + ((i * 9) % 26),
+          10 - i * 26
+        );
+        ring.rotation.x = (i % 5) * 0.25;
+        ring.rotation.y = (i % 3) * 0.4;
+        ring.userData.baseY = ring.position.y;
+        ring.userData.spin = (i % 2 === 0 ? 1 : -1) * (0.35 + (i % 4) * 0.12);
+        ring.userData.phase = i * 0.8;
+        scene.add(ring);
+        bgSkyRings.push(ring);
+      }
+
+      // Floating Holographic Cyberpunk Billboards along skyline
+      for (let i = 0; i < 14; i++) {
+        const side = i % 2 === 0 ? -1 : 1;
+        const tex = getCyberBillboardTexture(i);
+        const board = new THREE.Mesh(
+          new THREE.PlaneGeometry(11, 7.5),
+          new THREE.MeshBasicMaterial({
+            map: tex,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.9
+          })
+        );
+        board.position.set(side * (32 + (i % 3) * 9), 5 + ((i * 7) % 18), -12 - i * 28);
+        board.rotation.y = side * -0.45;
+        board.userData.baseY = board.position.y;
+        board.userData.phase = i * 1.1;
+        scene.add(board);
+        bgBillboards.push(board);
+      }
+
+      // Distant Flying Cyber-Traffic Light Trails
+      const trailGeo = new THREE.BoxGeometry(0.28, 0.22, 4.8);
+      for (let i = 0; i < 24; i++) {
+        const isCyan = i % 2 === 0;
+        const trail = new THREE.Mesh(
+          trailGeo,
+          new THREE.MeshBasicMaterial({ color: isCyan ? 0x00f5ff : 0xff007f })
+        );
+        const side = i % 2 === 0 ? -1 : 1;
+        trail.position.set(side * (28 + (i % 5) * 10), -6 + (i % 6) * 6, 40 - (i * 19));
+        trail.userData.speed = (isCyan ? -1 : 1) * (24 + (i % 5) * 8);
+        scene.add(trail);
+        cyberTraffic.push(trail);
+      }
+    })();
+
+    // Local Cyberpunk Rain Streaks around player (disabled on Software WebGL)
+    const rainSystem = (() => {
+      if (isSoftwareGl) return null;
+      const count = 210;
+      const positions = new Float32Array(count * 6);
+      const offsets = [];
+      for (let i = 0; i < count; i++) {
+        offsets.push({
+          x: (Math.random() - 0.5) * 44,
+          y: (Math.random() - 0.5) * 26,
+          z: (Math.random() - 0.5) * 44,
+          spd: 22 + Math.random() * 14
+        });
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.LineBasicMaterial({
+        color: 0x7dd3fc,
+        transparent: true,
+        opacity: 0.26
+      });
+      const lines = new THREE.LineSegments(geo, mat);
+      lines.frustumCulled = false;
+      scene.add(lines);
+      return { lines, geo, positions, offsets, count };
+    })();
+
+    // Continuous Glowing Digital Dust Motes Particle System
+    const digitalDustSystem = (() => {
+      const count = isSoftwareGl ? 70 : 280;
+      const positions = new Float32Array(count * 3);
+      const colors = new Float32Array(count * 3);
+      const motes = [];
+      const palette = [
+        new THREE.Color(0x00f5ff),
+        new THREE.Color(0xff007f),
+        new THREE.Color(0xffd700),
+        new THREE.Color(0xa855f7)
+      ];
+
+      for (let i = 0; i < count; i++) {
+        motes.push({
+          ox: (Math.random() - 0.5) * 52,
+          oy: (Math.random() - 0.5) * 24,
+          oz: (Math.random() - 0.5) * 56,
+          vx: (Math.random() - 0.5) * 0.9,
+          vy: 0.35 + Math.random() * 0.85,
+          vz: (Math.random() - 0.5) * 0.9,
+          phase: Math.random() * Math.PI * 2
+        });
+        const col = palette[i % palette.length];
+        colors[i * 3] = col.r;
+        colors[i * 3 + 1] = col.g;
+        colors[i * 3 + 2] = col.b;
+      }
+
+      // Soft circular digital mote sprite
+      const { c, ctx } = makeCanvas(64);
+      const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.35, 'rgba(255,255,255,0.75)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 64, 64);
+      const spriteTex = configureTex(c, false, true);
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+      const mat = new THREE.PointsMaterial({
+        size: 0.36,
+        map: spriteTex,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      const points = new THREE.Points(geo, mat);
+      points.frustumCulled = false;
+      scene.add(points);
+      return { points, geo, positions, motes, count };
+    })();
+
+    // Radial Screen-Edge Speed Streaks Overlay (accelerating / Rebound Boost)
+    const speedStreakOverlay = (() => {
+      const cvs = document.getElementById('speed-streaks');
+      const ctx = cvs.getContext('2d');
+      const resize = () => {
+        const dpr = isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+        cvs.width = Math.floor(window.innerWidth * dpr);
+        cvs.height = Math.floor(window.innerHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      };
+      resize();
+      const rays = [];
+      for (let i = 0; i < 44; i++) {
+        rays.push({
+          angle: (i / 44) * Math.PI * 2 + (Math.random() - 0.5) * 0.08,
+          seed: Math.random() * 100,
+          innerFrac: 0.56 + Math.random() * 0.16,
+          width: 1.2 + Math.random() * 2.2
+        });
+      }
+      return { cvs, ctx, resize, rays, intensity: 0 };
+    })();
+
+    // =========================================================================
+    // 6. PROCEDURAL 3D CYBER-BMX BICYCLE & FUTURISTIC RIDER
+    // =========================================================================
+    function createBicycleRig() {
+      const root = new THREE.Group();
+      const squashRoot = new THREE.Group();
+      const tiltRoot = new THREE.Group();
+      root.add(squashRoot);
+      squashRoot.add(tiltRoot);
+
+      // Clean satin carbon-kevlar, brushed alloy & crisp trim materials (no harsh glare)
+      const carbonMaps = getCarbonSurfaceMaps();
+      const frameMat = new THREE.MeshStandardMaterial({
+        color: 0x181d34,
+        metalness: 0.35,
+        roughness: 0.56,
+        roughnessMap: carbonMaps.roughnessMap,
+        bumpMap: carbonMaps.bumpMap,
+        bumpScale: 0.01,
+        envMapIntensity: 0.35
+      });
+      const frameAccentMat = new THREE.MeshStandardMaterial({
+        color: 0x262e52,
+        metalness: 0.32,
+        roughness: 0.54,
+        roughnessMap: carbonMaps.roughnessMap,
+        bumpMap: carbonMaps.bumpMap,
+        bumpScale: 0.008,
+        envMapIntensity: 0.35
+      });
+      const neonMagentaMat = new THREE.MeshStandardMaterial({
+        color: 0xff007f,
+        emissive: 0xff007f,
+        emissiveIntensity: 0.65,
+        roughness: 0.4
+      });
+      const neonCyanMat = new THREE.MeshStandardMaterial({
+        color: 0x00f5ff,
+        emissive: 0x00f5ff,
+        emissiveIntensity: 0.65,
+        roughness: 0.4
+      });
+      const thrusterMat = new THREE.MeshStandardMaterial({
+        color: 0x00f5ff,
+        emissive: 0x00f5ff,
+        emissiveIntensity: 0.65,
+        roughness: 0.4
+      });
+      const chromeMat = new THREE.MeshStandardMaterial({
+        color: 0xcbd5e1,
+        metalness: 0.55,
+        roughness: 0.38,
+        envMapIntensity: 0.45
+      });
+      const neonTireTex = getNeonTireTextures();
+      const tireMat = new THREE.MeshStandardMaterial({
+        map: neonTireTex.map,
+        emissive: 0xffffff,
+        emissiveMap: neonTireTex.emissiveMap,
+        emissiveIntensity: 0.55,
+        roughness: 0.78,
+        metalness: 0.1
+      });
+      const gripMat = new THREE.MeshStandardMaterial({ color: 0x0c111e, roughness: 0.65 });
+      const goldMat = new THREE.MeshStandardMaterial({
+        color: 0xf59e0b,
+        emissive: 0x3a2200,
+        metalness: 0.45,
+        roughness: 0.4,
+        envMapIntensity: 0.4
+      });
+
+      function buildWheel() {
+        const wg = new THREE.Group();
+        // Fat directional cyber-tread tire
+        const tire = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.095, 16, 32), tireMat);
+        tire.rotation.y = Math.PI / 2;
+        tire.castShadow = true;
+        wg.add(tire);
+
+        // Deep aero carbon rim + glowing inner plasma ring
+        const aeroRim = new THREE.Mesh(new THREE.TorusGeometry(0.285, 0.036, 10, 28), frameMat);
+        aeroRim.rotation.y = Math.PI / 2;
+        wg.add(aeroRim);
+
+        const plasmaRim = new THREE.Mesh(new THREE.TorusGeometry(0.255, 0.014, 8, 28), neonCyanMat);
+        plasmaRim.rotation.y = Math.PI / 2;
+        wg.add(plasmaRim);
+
+        // Machined hub & disc brake rotor
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.2, 14), chromeMat);
+        hub.rotation.z = Math.PI / 2;
+        wg.add(hub);
+
+        const rotor = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.015, 18), chromeMat);
+        rotor.rotation.z = Math.PI / 2;
+        rotor.position.x = -0.075;
+        wg.add(rotor);
+
+        // Crossed dual-tone spokes
+        const spokeGeo = new THREE.CylinderGeometry(0.011, 0.011, 0.54, 6);
+        for (let i = 0; i < 6; i++) {
+          const spoke = new THREE.Mesh(spokeGeo, i % 2 === 0 ? chromeMat : goldMat);
+          spoke.rotation.x = (i * Math.PI) / 6;
+          wg.add(spoke);
+        }
+        return wg;
+      }
+
+      // Rear Wheel & Carbon Rear Mudguard
+      const rearWheel = buildWheel();
+      rearWheel.position.set(0, 0.45, 0.70);
+      tiltRoot.add(rearWheel);
+
+      const rearFender = new THREE.Mesh(
+        new THREE.TorusGeometry(0.49, 0.035, 8, 16, Math.PI * 0.48),
+        frameAccentMat
+      );
+      rearFender.rotation.y = Math.PI / 2;
+      rearFender.rotation.z = Math.PI * 0.18;
+      rearFender.position.set(0, 0.45, 0.70);
+      tiltRoot.add(rearFender);
+
+      // Front Steer Assembly (Dual-Crown Inverted Fork, Aero Bars, Headlight, Fender)
+      const frontSteerGroup = new THREE.Group();
+      frontSteerGroup.position.set(0, 0.45, -0.70);
+      tiltRoot.add(frontSteerGroup);
+
+      const frontWheel = buildWheel();
+      frontSteerGroup.add(frontWheel);
+
+      const forkSliderGeo = new THREE.CylinderGeometry(0.038, 0.034, 0.42, 10);
+      const forkStanchionGeo = new THREE.CylinderGeometry(0.028, 0.028, 0.46, 10);
+      for (const sx of [-0.095, 0.095]) {
+        const slider = new THREE.Mesh(forkSliderGeo, frameMat);
+        slider.position.set(sx, 0.21, 0.03);
+        slider.rotation.x = -0.22;
+        slider.castShadow = true;
+        frontSteerGroup.add(slider);
+
+        const stanchion = new THREE.Mesh(forkStanchionGeo, goldMat);
+        stanchion.position.set(sx, 0.52, 0.10);
+        stanchion.rotation.x = -0.22;
+        stanchion.castShadow = true;
+        frontSteerGroup.add(stanchion);
+      }
+
+      // Upper & lower fork crowns
+      for (const cy of [0.42, 0.66]) {
+        const crown = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.045, 0.09), chromeMat);
+        crown.position.set(0, cy, cy === 0.42 ? 0.075 : 0.13);
+        crown.rotation.x = -0.22;
+        frontSteerGroup.add(crown);
+      }
+
+      const stem = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.07, 0.14), frameAccentMat);
+      stem.position.set(0, 0.72, 0.12);
+      frontSteerGroup.add(stem);
+
+      // Tapered cyber riser handlebar + illuminated handguards
+      const barCenter = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.44, 10), chromeMat);
+      barCenter.rotation.z = Math.PI / 2;
+      barCenter.position.set(0, 0.75, 0.10);
+      frontSteerGroup.add(barCenter);
+
+      for (const sx of [-1, 1]) {
+        const barWing = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.025, 0.22, 10), chromeMat);
+        barWing.position.set(sx * 0.29, 0.78, 0.11);
+        barWing.rotation.z = sx * 1.32;
+        barWing.rotation.y = sx * -0.18;
+        frontSteerGroup.add(barWing);
+
+        const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.16, 10), gripMat);
+        grip.position.set(sx * 0.36, 0.79, 0.12);
+        grip.rotation.z = sx * 1.35;
+        grip.rotation.y = sx * -0.18;
+        frontSteerGroup.add(grip);
+
+        const guard = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.045, 0.06), neonMagentaMat);
+        guard.position.set(sx * 0.36, 0.81, 0.06);
+        frontSteerGroup.add(guard);
+      }
+
+      // Dual LED Cyber Headlight Pod
+      const lightHousing = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.11, 0.12), frameMat);
+      lightHousing.position.set(0, 0.54, 0.02);
+      frontSteerGroup.add(lightHousing);
+
+      const headlight = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.05, 0.04), neonCyanMat);
+      headlight.position.set(0, 0.54, -0.035);
+      frontSteerGroup.add(headlight);
+
+      let headlightSpot = null;
+      let underglowLight = null;
+
+      // Holo-Cockpit Handlebar Dash (Crisp 1st-Person POV Centerpiece)
+      const dashHousing = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.075, 0.11), frameMat);
+      dashHousing.position.set(0, 0.80, 0.13);
+      dashHousing.rotation.x = -0.58; // tilt screen cleanly upward toward rider visor
+      frontSteerGroup.add(dashHousing);
+
+      const dashScreenMat = new THREE.MeshStandardMaterial({
+        color: 0x051828,
+        emissive: 0x00f5ff,
+        emissiveIntensity: 0.85,
+        roughness: 0.1
+      });
+      const dashScreen = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.052, 0.015), dashScreenMat);
+      dashScreen.position.set(0, 0, 0.052);
+      dashHousing.add(dashScreen);
+
+      const dashBoostBarMat = new THREE.MeshBasicMaterial({ color: 0x00f5ff });
+      const dashBoostBar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.016, 0.018), dashBoostBarMat);
+      dashBoostBar.position.set(0, 0, 0.058);
+      dashHousing.add(dashBoostBar);
+
+      // Dedicated 1st-Person Cockpit Gloves/Forearms (shown only in Rider POV, zero clipping)
+      const fpvGloves = new THREE.Group();
+      fpvGloves.visible = false;
+      frontSteerGroup.add(fpvGloves);
+      const fpvSuitMat = new THREE.MeshStandardMaterial({ color: 0x10172d, metalness: 0.2, roughness: 0.68, envMapIntensity: 0.3 });
+      const fpvArmorMat = new THREE.MeshStandardMaterial({ color: 0x222d42, metalness: 0.3, roughness: 0.55, envMapIntensity: 0.35 });
+      for (const sx of [-1, 1]) {
+        const gloveGrip = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.08, 0.11), fpvArmorMat);
+        gloveGrip.position.set(sx * 0.35, 0.81, 0.13);
+        fpvGloves.add(gloveGrip);
+
+        const knuckle = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.022, 0.085), neonCyanMat);
+        knuckle.position.set(sx * 0.35, 0.855, 0.13);
+        fpvGloves.add(knuckle);
+
+        const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.052, 0.34, 10), fpvSuitMat);
+        forearm.position.set(sx * 0.32, 0.85, 0.29);
+        forearm.rotation.set(1.38, sx * -0.14, sx * 0.16);
+        fpvGloves.add(forearm);
+      }
+
+      // Sculpted Carbon Monocoque Main Chassis (ExtrudeGeometry with bevels)
+      const frameShape = new THREE.Shape();
+      frameShape.moveTo(-0.56, 0.68); // headtube top
+      frameShape.lineTo(-0.59, 0.56); // headtube bottom
+      frameShape.lineTo(0.04, 0.42);  // bottom bracket
+      frameShape.lineTo(0.26, 0.90);  // seatmast top
+      frameShape.lineTo(-0.14, 0.92); // top-tube spine
+      frameShape.closePath();
+
+      // Cutout window inside main triangle for sleek mechanical silhouette
+      const hole = new THREE.Path();
+      hole.moveTo(-0.42, 0.66);
+      hole.lineTo(0.03, 0.53);
+      hole.lineTo(0.15, 0.80);
+      hole.lineTo(-0.14, 0.82);
+      hole.closePath();
+      frameShape.holes.push(hole);
+
+      const chassisGeo = new THREE.ExtrudeGeometry(frameShape, {
+        depth: 0.09,
+        bevelEnabled: true,
+        bevelThickness: 0.018,
+        bevelSize: 0.016,
+        bevelSegments: 2
+      });
+      chassisGeo.translate(0, 0, -0.045);
+      chassisGeo.rotateY(-Math.PI / 2); // Align shape X to -Z (forward)
+      const chassisMesh = new THREE.Mesh(chassisGeo, frameMat);
+      chassisMesh.castShadow = true;
+      tiltRoot.add(chassisMesh);
+
+      // Helper for tubular sub-frames (rear swingarm, shock, neon rails)
+      function addTube(p1, p2, radius = 0.032, mat = frameMat) {
+        const v1 = new THREE.Vector3(...p1);
+        const v2 = new THREE.Vector3(...p2);
+        const dir = new THREE.Vector3().subVectors(v2, v1);
+        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, dir.length(), 10), mat);
+        mesh.position.copy(v1).addScaledVector(dir, 0.5);
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+        mesh.castShadow = true;
+        tiltRoot.add(mesh);
+        return mesh;
+      }
+
+      // Neon downtube accent strip & rear swingarm + gold air shock
+      addTube([0.055, 0.46, 0.01], [0.055, 0.66, -0.50], 0.015, neonCyanMat);
+      addTube([-0.055, 0.46, 0.01], [-0.055, 0.66, -0.50], 0.015, neonCyanMat);
+
+      for (const sx of [-0.075, 0.075]) {
+        addTube([sx, 0.45, 0.06], [sx, 0.45, 0.70], 0.026, frameAccentMat);
+        addTube([sx, 0.86, 0.25], [sx, 0.45, 0.70], 0.022, neonMagentaMat);
+      }
+      // Gold rear coil/air shock
+      addTube([0, 0.56, 0.14], [0, 0.80, 0.32], 0.036, goldMat);
+
+      // Aero Tail Thruster + Saddle
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.075, 0.36), gripMat);
+      seat.position.set(0, 0.96, 0.29);
+      seat.rotation.x = -0.06;
+      seat.castShadow = true;
+      tiltRoot.add(seat);
+
+      const tailUnit = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.22), frameAccentMat);
+      tailUnit.position.set(0, 0.90, 0.54);
+      tailUnit.rotation.x = 0.22;
+      tiltRoot.add(tailUnit);
+
+      const thrusterGlow = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.045, 0.04), thrusterMat);
+      thrusterGlow.position.set(0, 0.88, 0.66);
+      tiltRoot.add(thrusterGlow);
+
+      // Articulated Crankset + Counter-Rotating Stunt Pedals
+      const crankGroup = new THREE.Group();
+      crankGroup.position.set(0, 0.45, 0.06);
+      tiltRoot.add(crankGroup);
+
+      const sprocket = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.115, 0.032, 16), goldMat);
+      sprocket.rotation.z = Math.PI / 2;
+      crankGroup.add(sprocket);
+
+      const crankArmGeo = new THREE.BoxGeometry(0.03, 0.035, 0.18);
+      const crankArmL = new THREE.Mesh(crankArmGeo, chromeMat);
+      crankArmL.position.set(-0.11, 0, 0.08);
+      crankGroup.add(crankArmL);
+
+      const crankArmR = new THREE.Mesh(crankArmGeo, chromeMat);
+      crankArmR.position.set(0.11, 0, -0.08);
+      crankGroup.add(crankArmR);
+
+      const pedalGeo = new THREE.BoxGeometry(0.10, 0.03, 0.11);
+      const pedalL = new THREE.Mesh(pedalGeo, neonCyanMat);
+      pedalL.position.set(-0.16, 0, 0.16);
+      crankGroup.add(pedalL);
+
+      const pedalR = new THREE.Mesh(pedalGeo, neonMagentaMat);
+      pedalR.position.set(0.16, 0, -0.16);
+      crankGroup.add(pedalR);
+
+      // =======================================================================
+      // POLISHED ARTICULATED CYBER-STUNT RIDER
+      // =======================================================================
+      const riderGroup = new THREE.Group();
+      riderGroup.position.set(0, 1.00, 0.28);
+      tiltRoot.add(riderGroup);
+
+      const suitMat = new THREE.MeshStandardMaterial({
+        color: 0x10172d,
+        metalness: 0.2,
+        roughness: 0.68,
+        envMapIntensity: 0.3
+      });
+      const armorMat = new THREE.MeshStandardMaterial({
+        color: 0x222d42,
+        metalness: 0.3,
+        roughness: 0.55,
+        envMapIntensity: 0.35
+      });
+      const helmetMat = new THREE.MeshStandardMaterial({
+        color: 0xe2e8f0,
+        metalness: 0.18,
+        roughness: 0.48,
+        envMapIntensity: 0.35
+      });
+      const visorMat = new THREE.MeshStandardMaterial({
+        color: 0x00f5ff,
+        emissive: 0x00f5ff,
+        emissiveIntensity: 0.65,
+        metalness: 0.25,
+        roughness: 0.4
+      });
+
+      // Pelvis & Articulated Torso
+      const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.14, 0.22), suitMat);
+      pelvis.position.set(0, 0.03, 0.0);
+      pelvis.castShadow = true;
+      riderGroup.add(pelvis);
+
+      const torsoPivot = new THREE.Group();
+      torsoPivot.position.set(0, 0.09, 0.0);
+      torsoPivot.rotation.x = 0.42; // sporty attack posture
+      riderGroup.add(torsoPivot);
+
+      const chestArmor = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.44, 0.24), armorMat);
+      chestArmor.position.set(0, 0.23, 0);
+      chestArmor.castShadow = true;
+      torsoPivot.add(chestArmor);
+
+      // Glowing Cyber Energy Core Backpack (hero focal read from chase cam!)
+      const pack = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.34, 0.11), frameMat);
+      pack.position.set(0, 0.24, 0.14);
+      pack.castShadow = true;
+      torsoPivot.add(pack);
+
+      const energyCore = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.12, 12), neonCyanMat);
+      energyCore.rotation.x = Math.PI / 2;
+      energyCore.position.set(0, 0.25, 0.16);
+      torsoPivot.add(energyCore);
+
+      const spineStrip = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.30, 0.04), neonMagentaMat);
+      spineStrip.position.set(0, 0.24, 0.20);
+      torsoPivot.add(spineStrip);
+
+      // Shoulder Pauldrons
+      for (const sx of [-0.24, 0.24]) {
+        const pauldron = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.13, 0.20), armorMat);
+        pauldron.position.set(sx, 0.40, 0);
+        pauldron.rotation.z = sx > 0 ? -0.18 : 0.18;
+        pauldron.castShadow = true;
+        torsoPivot.add(pauldron);
+
+        const pTrim = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.03, 0.205), neonCyanMat);
+        pTrim.position.y = 0.04;
+        pauldron.add(pTrim);
+      }
+
+      // Sculpted Aero-Helmet & Wrap-Around Cyber HUD Visor
+      const headGroup = new THREE.Group();
+      headGroup.position.set(0, 0.56, -0.02);
+      headGroup.rotation.x = -0.32; // keep gaze forward on course
+      torsoPivot.add(headGroup);
+
+      const helmetShell = new THREE.Mesh(new THREE.SphereGeometry(0.19, 16, 14), helmetMat);
+      helmetShell.scale.set(0.95, 1.02, 1.15);
+      helmetShell.castShadow = true;
+      headGroup.add(helmetShell);
+
+      const chinGuard = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.11, 0.18), armorMat);
+      chinGuard.position.set(0, -0.09, -0.10);
+      headGroup.add(chinGuard);
+
+      const visor = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.195, 0.195, 0.10, 18, 1, true, Math.PI * 0.65, Math.PI * 0.7),
+        visorMat
+      );
+      visor.position.set(0, 0.01, -0.03);
+      headGroup.add(visor);
+
+      // Sweeping rear aero fin on helmet
+      const aeroFin = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.24), neonMagentaMat);
+      aeroFin.position.set(0, 0.14, 0.14);
+      aeroFin.rotation.x = -0.35;
+      headGroup.add(aeroFin);
+
+      // Articulated Two-Segment Arms reaching to handlebar grips
+      const upperArmGeo = new THREE.CylinderGeometry(0.052, 0.045, 0.28, 8);
+      const forearmGeo = new THREE.CylinderGeometry(0.046, 0.038, 0.28, 8);
+      const gloveGeo = new THREE.BoxGeometry(0.085, 0.075, 0.095);
+
+      for (const sx of [-1, 1]) {
+        const shoulder = new THREE.Group();
+        shoulder.position.set(sx * 0.25, 0.37, -0.02);
+        shoulder.rotation.set(0.68, sx * 0.12, sx * -0.12);
+        torsoPivot.add(shoulder);
+
+        const uArm = new THREE.Mesh(upperArmGeo, suitMat);
+        uArm.position.y = -0.14;
+        uArm.castShadow = true;
+        shoulder.add(uArm);
+
+        const elbow = new THREE.Group();
+        elbow.position.set(0, -0.27, 0);
+        elbow.rotation.x = 0.62;
+        shoulder.add(elbow);
+
+        const fArm = new THREE.Mesh(forearmGeo, armorMat);
+        fArm.position.y = -0.14;
+        fArm.castShadow = true;
+        elbow.add(fArm);
+
+        const glove = new THREE.Mesh(gloveGeo, neonCyanMat);
+        glove.position.set(0, -0.28, 0);
+        elbow.add(glove);
+      }
+
+      // Articulated Two-Bone IK Legs (Thigh -> Knee Pad -> Shin -> Boot)
+      const thighGeo = new THREE.CylinderGeometry(0.068, 0.055, 0.34, 10);
+      const shinGeo = new THREE.CylinderGeometry(0.056, 0.044, 0.34, 10);
+      const kneeGeo = new THREE.SphereGeometry(0.064, 10, 10);
+      const bootGeo = new THREE.BoxGeometry(0.11, 0.085, 0.17);
+
+      function buildLeg(sideX, stripeMat) {
+        const hipPivot = new THREE.Group();
+        hipPivot.position.set(sideX, -0.01, 0.0);
+        riderGroup.add(hipPivot);
+
+        const thigh = new THREE.Mesh(thighGeo, suitMat);
+        thigh.position.y = -0.17;
+        thigh.castShadow = true;
+        hipPivot.add(thigh);
+
+        const kneePivot = new THREE.Group();
+        kneePivot.position.set(0, -0.34, 0);
+        hipPivot.add(kneePivot);
+
+        const kneePad = new THREE.Mesh(kneeGeo, armorMat);
+        kneePivot.add(kneePad);
+
+        const shin = new THREE.Mesh(shinGeo, armorMat);
+        shin.position.y = -0.17;
+        shin.castShadow = true;
+        kneePivot.add(shin);
+
+        const boot = new THREE.Mesh(bootGeo, gripMat);
+        boot.position.set(0, -0.34, -0.02);
+        boot.castShadow = true;
+        kneePivot.add(boot);
+
+        const bootSole = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.025, 0.175), stripeMat);
+        bootSole.position.y = -0.035;
+        boot.add(bootSole);
+
+        return { hipPivot, kneePivot };
+      }
+
+      const legL = buildLeg(-0.15, neonCyanMat);
+      const legR = buildLeg(0.15, neonMagentaMat);
+
+      scene.add(root);
+
+      return {
+        root,
+        squashRoot,
+        tiltRoot,
+        frontSteerGroup,
+        frontWheel,
+        rearWheel,
+        crankGroup,
+        pedalL,
+        pedalR,
+        riderGroup,
+        torsoPivot,
+        headGroup,
+        legL,
+        legR,
+        thrusterMat,
+        fpvGloves,
+        dashBoostBar,
+        dashBoostBarMat,
+        underglowLight
+      };
+    }
+
+    const bikeRig = createBicycleRig();
+
+    // =========================================================================
+    // 7. PARTICLE POOL, ELASTIC TETHER & CUSTOM ANCHOR VISUALS
+    // =========================================================================
+    class ParticlePool {
+      constructor(count = 180) {
+        this.pool = [];
+        const geo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+        for (let i = 0; i < count; i++) {
+          const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.visible = false;
+          scene.add(mesh);
+          this.pool.push({
+            mesh,
+            vel: new THREE.Vector3(),
+            life: 0,
+            maxLife: 1,
+            gravity: 16,
+            spin: new THREE.Vector3()
+          });
+        }
+        this.cursor = 0;
+      }
+
+      spawn(pos, vel, colorHex, size = 1, maxLife = 0.65, gravity = 16) {
+        const p = this.pool[this.cursor];
+        this.cursor = (this.cursor + 1) % this.pool.length;
+        p.mesh.visible = true;
+        p.mesh.position.copy(pos);
+        p.mesh.scale.setScalar(size);
+        p.mesh.material.color.setHex(colorHex);
+        p.vel.copy(vel);
+        p.life = maxLife;
+        p.maxLife = maxLife;
+        p.gravity = gravity;
+        p.spin.set(Math.random() * 8, Math.random() * 8, Math.random() * 8);
+      }
+
+      burst(pos, count, colors, speed = 8, size = 1, life = 0.6, gravity = 16) {
+        for (let i = 0; i < count; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const up = 0.3 + Math.random() * 1.1;
+          const sp = speed * (0.4 + Math.random() * 0.8);
+          this.spawn(
+            pos,
+            _pVel.set(Math.cos(a) * sp, up * sp * 0.75, Math.sin(a) * sp),
+            colors[i % colors.length],
+            size * (0.7 + Math.random() * 0.7),
+            life * (0.7 + Math.random() * 0.5),
+            gravity
+          );
+        }
+      }
+
+      update(dt) {
+        for (let i = 0; i < this.pool.length; i++) {
+          const p = this.pool[i];
+          if (p.life <= 0) continue;
+          p.life -= dt;
+          if (p.life <= 0) {
+            p.mesh.visible = false;
+            continue;
+          }
+          p.vel.y -= p.gravity * dt;
+          p.mesh.position.addScaledVector(p.vel, dt);
+          p.mesh.rotation.x += p.spin.x * dt;
+          p.mesh.rotation.y += p.spin.y * dt;
+          p.mesh.scale.setScalar(Math.max(0.01, p.life / p.maxLife));
+        }
+      }
+    }
+
+    const _pVel = new THREE.Vector3();
+    const particles = new ParticlePool(180);
+
+    const tetherVisual = (function createTetherVisual() {
+      const group = new THREE.Group();
+      group.visible = false;
+
+      const beamMat = new THREE.MeshBasicMaterial({ color: 0x00f5ff, transparent: true, opacity: 0.95 });
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1, 8), beamMat);
+      group.add(beam);
+
+      const beads = [];
+      const beadGeo = new THREE.SphereGeometry(0.25, 10, 10);
+      const beadMatA = new THREE.MeshBasicMaterial({ color: 0x00f5ff });
+      const beadMatB = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+      for (let i = 0; i < 18; i++) {
+        const b = new THREE.Mesh(beadGeo, i % 2 === 0 ? beadMatA : beadMatB);
+        group.add(b);
+        beads.push(b);
+      }
+
+      scene.add(group);
+      const tmpDir = new THREE.Vector3();
+      const tmpNorm = new THREE.Vector3();
+      const tmpUp = new THREE.Vector3(0, 1, 0);
+
+      return {
+        group,
+        update(anchorPos, bikePos, time, progress) {
+          group.visible = true;
+          tmpDir.subVectors(bikePos, anchorPos);
+          const dist = Math.max(0.1, tmpDir.length());
+          beam.position.copy(anchorPos).addScaledVector(tmpDir, 0.5);
+          beam.scale.set(1, dist, 1);
+          tmpNorm.copy(tmpDir).divideScalar(dist);
+          if (tmpNorm.y < -0.999) beam.quaternion.set(1, 0, 0, 0);
+          else beam.quaternion.setFromUnitVectors(tmpUp, tmpNorm);
+
+          for (let i = 0; i < beads.length; i++) {
+            const frac = (i + 1) / (beads.length + 1);
+            const pos = beads[i].position;
+            pos.lerpVectors(anchorPos, bikePos, frac);
+            pos.y += Math.sin(frac * 10 - time * 26) * (1 - progress) * 0.45;
+            beads[i].scale.setScalar(0.65 + 0.4 * Math.sin(time * 20 + i));
+          }
+        },
+        hide() {
+          group.visible = false;
+        }
+      };
+    })();
+
+    const customAnchorVisual = (function createAnchorBeacon() {
+      const g = new THREE.Group();
+      g.visible = false;
+      const pad = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.15, 1.35, 0.16, 20),
+        new THREE.MeshBasicMaterial({ color: 0x00f5ff, transparent: true, opacity: 0.8 })
+      );
+      pad.position.y = 0.08;
+      g.add(pad);
+
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.95, 0.08, 10, 28),
+        new THREE.MeshBasicMaterial({ color: 0xffd700 })
+      );
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.45;
+      g.add(ring);
+
+      const pillar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.25, 3.6, 12),
+        new THREE.MeshBasicMaterial({ color: 0x00f5ff, transparent: true, opacity: 0.35 })
+      );
+      pillar.position.y = 1.8;
+      g.add(pillar);
+
+      scene.add(g);
+      return {
+        group: g,
+        ring,
+        show(pos) { g.position.copy(pos); g.visible = true; },
+        hide() { g.visible = false; },
+        animate(t) {
+          if (!g.visible) return;
+          ring.position.y = 0.48 + Math.sin(t * 4) * 0.14;
+          ring.rotation.z = t * 2;
+        }
+      };
+    })();
+
+    // =========================================================================
+    // 8. COURSE BUILDER & OBB COLLISION SYSTEM (Futuristic PBR Materials)
+    // =========================================================================
+    const colliders = [];
+    const movingPlatforms = [];
+    const sweepers = [];
+    const checkpoints = [];
+    const animatedRings = [];
+    let finishZone = null;
+
+    const cyberBlue = getCyberGridTextures('#111834', '#00f5ff', '#00f5ff');
+    const hexCyan = getHexPanelTextures('#0d1b2e', '#00f5ff');
+    const hexGold = getHexPanelTextures('#241a0d', '#ffd700');
+    const cyberPurple = getCyberGridTextures('#1d1035', '#ff007f', '#00f5ff');
+    const cyberSlate = getCyberGridTextures('#141726', '#64748b', '#ff007f');
+    const hazardTex = getAnimatedHazardTexture();
+
+    const wetMaps = getWetAsphaltSurfaceMaps();
+    const MATS = {
+      blue: new THREE.MeshPhysicalMaterial({
+        map: cyberBlue.map,
+        emissive: 0xffffff,
+        emissiveMap: cyberBlue.emissiveMap,
+        emissiveIntensity: 0.38,
+        bumpMap: wetMaps.bumpMap,
+        bumpScale: 0.015,
+        metalness: 0.18,
+        roughness: 0.72,
+        clearcoat: 0.0,
+        envMapIntensity: 0.25
+      }),
+      cyan: new THREE.MeshPhysicalMaterial({
+        map: hexCyan.map,
+        emissive: 0xffffff,
+        emissiveMap: hexCyan.emissiveMap,
+        emissiveIntensity: 0.38,
+        bumpMap: wetMaps.bumpMap,
+        bumpScale: 0.015,
+        metalness: 0.18,
+        roughness: 0.72,
+        clearcoat: 0.0,
+        envMapIntensity: 0.25
+      }),
+      yellow: new THREE.MeshPhysicalMaterial({
+        map: hexGold.map,
+        emissive: 0xffffff,
+        emissiveMap: hexGold.emissiveMap,
+        emissiveIntensity: 0.42,
+        bumpMap: wetMaps.bumpMap,
+        bumpScale: 0.015,
+        metalness: 0.18,
+        roughness: 0.7,
+        clearcoat: 0.0,
+        envMapIntensity: 0.25
+      }),
+      purple: new THREE.MeshPhysicalMaterial({
+        map: cyberPurple.map,
+        emissive: 0xffffff,
+        emissiveMap: cyberPurple.emissiveMap,
+        emissiveIntensity: 0.4,
+        bumpMap: wetMaps.bumpMap,
+        bumpScale: 0.015,
+        metalness: 0.18,
+        roughness: 0.72,
+        clearcoat: 0.0,
+        envMapIntensity: 0.25
+      }),
+      slate: new THREE.MeshPhysicalMaterial({
+        map: cyberSlate.map,
+        emissive: 0xffffff,
+        emissiveMap: cyberSlate.emissiveMap,
+        emissiveIntensity: 0.28,
+        bumpMap: wetMaps.bumpMap,
+        bumpScale: 0.015,
+        metalness: 0.22,
+        roughness: 0.74,
+        clearcoat: 0.0,
+        envMapIntensity: 0.25
+      }),
+      hazard: new THREE.MeshPhysicalMaterial({
+        map: hazardTex,
+        emissive: 0xff0055,
+        emissiveMap: hazardTex,
+        emissiveIntensity: 0.72,
+        metalness: 0.15,
+        roughness: 0.65,
+        clearcoat: 0.0,
+        envMapIntensity: 0.25
+      }),
+      bounce: new THREE.MeshPhysicalMaterial({
+        color: 0xff007f,
+        emissive: 0xff007f,
+        emissiveIntensity: 0.75,
+        metalness: 0.15,
+        roughness: 0.6,
+        clearcoat: 0.0,
+        envMapIntensity: 0.25
+      }),
+      boost: new THREE.MeshPhysicalMaterial({
+        color: 0x00f5ff,
+        emissive: 0x00f5ff,
+        emissiveIntensity: 0.75,
+        metalness: 0.15,
+        roughness: 0.6,
+        clearcoat: 0.0,
+        envMapIntensity: 0.25
+      }),
+      finish: new THREE.MeshPhysicalMaterial({
+        map: getCheckerTexture(),
+        emissive: 0x004455,
+        emissiveIntensity: 0.38,
+        bumpMap: wetMaps.bumpMap,
+        bumpScale: 0.015,
+        metalness: 0.18,
+        roughness: 0.7,
+        clearcoat: 0.0,
+        envMapIntensity: 0.25
+      })
+    };
+
+    const trimCyanMat = new THREE.MeshBasicMaterial({ color: 0x00f5ff });
+    const trimMagentaMat = new THREE.MeshBasicMaterial({ color: 0xff007f });
+    const trimGoldMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+
+    function makeOBB(mesh, w, h, d, type = 'solid', extra = {}) {
+      const obb = {
+        mesh,
+        center: mesh.position.clone(),
+        half: new THREE.Vector3(w * 0.5, h * 0.5, d * 0.5),
+        uX: new THREE.Vector3(1, 0, 0),
+        uY: new THREE.Vector3(0, 1, 0),
+        uZ: new THREE.Vector3(0, 0, 1),
+        type,
+        vel: new THREE.Vector3(),
+        deltaPos: new THREE.Vector3(),
+        ...extra
+      };
+      syncOBBTransform(obb);
+      colliders.push(obb);
+      return obb;
+    }
+
+    function syncOBBTransform(obb) {
+      obb.mesh.updateMatrixWorld();
+      obb.center.copy(obb.mesh.position);
+      const e = obb.mesh.matrixWorld.elements;
+      obb.uX.set(e[0], e[1], e[2]).normalize();
+      obb.uY.set(e[4], e[5], e[6]).normalize();
+      obb.uZ.set(e[8], e[9], e[10]).normalize();
+    }
+
+    function attachEdgeNeonTrim(mesh, w, h, d, trimMat) {
+      const sideGeo = new THREE.BoxGeometry(0.08, 0.08, d);
+      for (const sx of [-w * 0.5 + 0.03, w * 0.5 - 0.03]) {
+        const s = new THREE.Mesh(sideGeo, trimMat);
+        s.position.set(sx, h * 0.5 - 0.02, 0);
+        mesh.add(s);
+      }
+      const capGeo = new THREE.BoxGeometry(w, 0.07, 0.07);
+      for (const sz of [-d * 0.5 + 0.03, d * 0.5 - 0.03]) {
+        const c = new THREE.Mesh(capGeo, trimMat);
+        c.position.set(0, h * 0.5 - 0.02, sz);
+        mesh.add(c);
+      }
+      // Subtle under-chassis plasma core rail
+      const underRail = new THREE.Mesh(new THREE.BoxGeometry(w * 0.65, 0.06, d * 0.85), trimMat);
+      underRail.position.set(0, -h * 0.5 - 0.01, 0);
+      mesh.add(underRail);
+    }
+
+    function addDeck(x, topY, zStart, w, len, mat = MATS.blue, thickness = 1.4, type = 'solid') {
+      const geo = createScaledBoxGeometry(w, thickness, len, 2.6);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, topY - thickness * 0.5, zStart - len * 0.5);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      const trimMat = mat === MATS.purple ? trimMagentaMat : mat === MATS.yellow ? trimGoldMat : trimCyanMat;
+      attachEdgeNeonTrim(mesh, w, thickness, len, trimMat);
+      scene.add(mesh);
+      return makeOBB(mesh, w, thickness, len, type);
+    }
+
+    function addRampUp(x, topYStart, zStart, w, len, pitchDeg, mat = MATS.yellow, thickness = 1.2) {
+      const p = THREE.MathUtils.degToRad(pitchDeg);
+      const geo = createScaledBoxGeometry(w, thickness, len, 2.6);
+      const mesh = new THREE.Mesh(geo, mat);
+      const cy = topYStart - (thickness * 0.5) * Math.cos(p) + (len * 0.5) * Math.sin(p);
+      const cz = zStart - (thickness * 0.5) * Math.sin(p) - (len * 0.5) * Math.cos(p);
+      mesh.position.set(x, cy, cz);
+      mesh.rotation.x = p;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      attachEdgeNeonTrim(mesh, w, thickness, len, trimGoldMat);
+      scene.add(mesh);
+      makeOBB(mesh, w, thickness, len, 'solid');
+      return {
+        endY: topYStart + len * Math.sin(p),
+        endZ: zStart - len * Math.cos(p)
+      };
+    }
+
+    function addSurfaceOverlay(x, deckTopY, zCenter, w, d, type, mat, height = 0.28) {
+      const geo = type === 'hazard' ? createScaledBoxGeometry(w, height, d, 1.8) : new THREE.BoxGeometry(w, height, d);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, deckTopY + height * 0.5, zCenter);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+
+      if (type === 'bounce' || type === 'boost') {
+        const decal = new THREE.Mesh(
+          new THREE.PlaneGeometry(w * 0.85, d * 0.85),
+          new THREE.MeshBasicMaterial({
+            map: getPadGlowTexture(type === 'bounce' ? 'rgba(255,0,127,0.92)' : 'rgba(0,245,255,0.92)'),
+            transparent: true,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1
+          })
+        );
+        decal.rotation.x = -Math.PI / 2;
+        decal.position.y = height * 0.5 + 0.02;
+        mesh.add(decal);
+      }
+      return makeOBB(mesh, w, height, d, type);
+    }
+
+    function addMovingPlatform(baseX, topY, baseZ, w, d, moveAxis, amp, speed, phase = 0, mat = MATS.purple) {
+      const thickness = 1.2;
+      const geo = createScaledBoxGeometry(w, thickness, d, 2.6);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(baseX, topY - thickness * 0.5, baseZ);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      attachEdgeNeonTrim(mesh, w, thickness, d, trimMagentaMat);
+      scene.add(mesh);
+
+      const obb = makeOBB(mesh, w, thickness, d, 'solid');
+      movingPlatforms.push({ obb, basePos: mesh.position.clone(), axis: moveAxis.clone(), amp, speed, phase });
+      return obb;
+    }
+
+    function addSweeper(x, deckTopY, z, barLength, angularSpeed, phase = 0) {
+      const hub = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.65, 0.82, 1.4, 16),
+        new THREE.MeshPhysicalMaterial({ color: 0x1e293b, metalness: 0.85, roughness: 0.2, clearcoat: 0.8 })
+      );
+      hub.position.set(x, deckTopY + 0.7, z);
+      hub.castShadow = true;
+      scene.add(hub);
+
+      const hubRing = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.08, 8, 24), trimMagentaMat);
+      hubRing.rotation.x = Math.PI / 2;
+      hubRing.position.y = 0.65;
+      hub.add(hubRing);
+
+      const barH = 0.52;
+      const barD = 0.58;
+      const barMesh = new THREE.Mesh(createScaledBoxGeometry(barLength, barH, barD, 1.8), MATS.hazard);
+      barMesh.position.set(x, deckTopY + 0.65, z);
+      barMesh.castShadow = true;
+      scene.add(barMesh);
+
+      const obb = makeOBB(barMesh, barLength, barH, barD, 'hazard');
+      sweepers.push({ obb, barMesh, angularSpeed, phase });
+    }
+
+    function addCheckpoint(index, x, deckTopY, z, yaw = 0) {
+      const group = new THREE.Group();
+      group.position.set(x, deckTopY, z);
+      group.rotation.y = yaw;
+      scene.add(group);
+
+      const padMat = new THREE.MeshBasicMaterial({
+        map: getPadGlowTexture(index === 0 ? 'rgba(0,245,255,0.88)' : 'rgba(255,215,0,0.85)'),
+        transparent: true,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1
+      });
+      const pad = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 4.4), padMat);
+      pad.rotation.x = -Math.PI / 2;
+      pad.position.y = 0.04;
+      group.add(pad);
+
+      const pillarMat = new THREE.MeshPhysicalMaterial({ color: 0xe2e8f0, metalness: 0.88, roughness: 0.16, clearcoat: 0.7 });
+      const glowMat = new THREE.MeshBasicMaterial({ color: index === 0 ? 0x00f5ff : 0xffd700 });
+
+      for (const sx of [-3.4, 3.4]) {
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.3, 4.2, 12), pillarMat);
+        p.position.set(sx, 2.1, 0);
+        p.castShadow = true;
+        group.add(p);
+      }
+
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(3.4, 0.24, 10, 32, Math.PI), glowMat);
+      arch.position.set(0, 4.1, 0);
+      group.add(arch);
+
+      const beacon = new THREE.Mesh(new THREE.OctahedronGeometry(0.45, 0), glowMat);
+      beacon.position.set(0, 8.1, 0);
+      group.add(beacon);
+
+      checkpoints.push({
+        index,
+        spawnPos: new THREE.Vector3(x, deckTopY + 0.05, z),
+        yaw,
+        activated: index === 0,
+        group,
+        glowMat,
+        padMat,
+        beacon
+      });
+    }
+
+    function addSkyHoop(x, y, z, colorHex = 0x00f5ff) {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(3.6, 0.26, 12, 36),
+        new THREE.MeshBasicMaterial({ color: colorHex })
+      );
+      ring.position.set(x, y, z);
+      scene.add(ring);
+      animatedRings.push(ring);
+    }
+
+    // Build 9-Stage Sky Obby Course (Exact coordinates preserved)
+    (function buildCourse() {
+      addDeck(0, 0, 10, 10, 22, MATS.blue);
+      addCheckpoint(0, 0, 0, 4, 0);
+      addRampUp(0, 0, -12, 8, 10, 18, MATS.yellow);
+
+      addDeck(0, 2.2, -29, 10, 46, MATS.cyan);
+      addCheckpoint(1, 0, 2.2, -37, 0);
+      addSurfaceOverlay(0, 2.2, -52, 10, 2.4, 'hazard', MATS.hazard, 0.34);
+      addSurfaceOverlay(0, 2.2, -64, 10, 2.8, 'hazard', MATS.hazard, 0.34);
+      const r1 = addRampUp(0, 2.2, -75, 8, 9, 14, MATS.yellow);
+
+      addDeck(0, r1.endY, r1.endZ, 10, 13, MATS.blue);
+      addCheckpoint(2, 0, r1.endY, r1.endZ - 6.5, 0);
+      const z2 = r1.endZ - 13;
+      const y2 = r1.endY;
+
+      addDeck(-3.0, y2, z2, 2.3, 18, MATS.cyan);
+      addDeck(+3.0, y2, z2, 2.3, 18, MATS.cyan);
+      addDeck(0, y2 + 0.15, z2 - 1.0, 1.5, 16, MATS.yellow);
+      addSurfaceOverlay(0, y2 + 0.15, z2 - 9.0, 1.3, 4.5, 'boost', MATS.boost, 0.18);
+
+      const z3Start = z2 - 18;
+      addDeck(0, y2, z3Start, 10, 14, MATS.purple);
+      addCheckpoint(3, 0, y2, z3Start - 7, 0);
+      const z3End = z3Start - 14;
+
+      addMovingPlatform(0, y2, z3End - 7.5, 6.8, 7.6, new THREE.Vector3(4.6, 0, 0), 1, 1.15, 0);
+      addMovingPlatform(0, y2 + 0.4, z3End - 19.5, 6.8, 7.6, new THREE.Vector3(4.6, 0, 0), 1, 1.15, Math.PI);
+
+      const z4Start = z3End - 27;
+      addDeck(0, y2 + 0.6, z4Start, 11, 14, MATS.blue);
+      addCheckpoint(4, 0, y2 + 0.6, z4Start - 6.5, 0);
+      const y4 = y2 + 0.6;
+      const z4End = z4Start - 14;
+
+      addDeck(0, y4, z4End, 15, 32, MATS.slate);
+      addSweeper(0, y4, z4End - 10, 13.5, 1.4, 0);
+      addSweeper(0, y4, z4End - 22, 13.5, -1.65, 1.1);
+      addSurfaceOverlay(-6.8, y4, z4End - 16, 1.3, 30, 'hazard', MATS.hazard, 0.35);
+      addSurfaceOverlay(+6.8, y4, z4End - 16, 1.3, 30, 'hazard', MATS.hazard, 0.35);
+
+      const r4 = addRampUp(0, y4, z4End - 32, 9, 8, 12, MATS.yellow);
+      addDeck(0, r4.endY, r4.endZ, 11, 13, MATS.cyan);
+      addCheckpoint(5, 0, r4.endY, r4.endZ - 6, 0);
+      const y5 = r4.endY;
+      const z5End = r4.endZ - 13;
+
+      addSurfaceOverlay(0, y5, z5End + 2.4, 5.4, 4.2, 'bounce', MATS.bounce, 0.35);
+      const y6a = y5 + 5.4;
+      const z6aStart = z5End - 8;
+      addDeck(4, y6a, z6aStart, 9.5, 14, MATS.purple);
+      addSurfaceOverlay(4, y6a, z6aStart - 11.5, 5.2, 4.0, 'bounce', MATS.bounce, 0.35);
+
+      const y6 = y6a + 4.8;
+      const z6Start = z6aStart - 22;
+      addDeck(10, y6, z6Start, 11, 14, MATS.blue);
+      addCheckpoint(6, 10, y6, z6Start - 6.5, 0);
+      const z6End = z6Start - 14;
+
+      addDeck(10, y6, z6End, 9, 13, MATS.cyan);
+      addSurfaceOverlay(10, y6, z6End - 6.5, 5.0, 7.0, 'boost', MATS.boost, 0.2);
+      const r6 = addRampUp(10, y6, z6End - 13, 8.5, 11, 21, MATS.yellow);
+      addSkyHoop(10, r6.endY + 2.8, r6.endZ - 6.8, 0x00f5ff);
+
+      const z7Start = r6.endZ - 13.5;
+      const y7 = y6 - 0.5;
+      addDeck(10, y7, z7Start, 13, 22, MATS.blue);
+      addCheckpoint(7, 10, y7, z7Start - 14, 0);
+      const z7End = z7Start - 22;
+
+      addMovingPlatform(7, y7 + 1.0, z7End - 6.5, 7.2, 8.0, new THREE.Vector3(0, 1.0, -3.5), 1, 1.1, 0);
+      const z8BridgeStart = z7End - 17;
+      const y8 = y7 + 2.0;
+      addDeck(4, y8, z8BridgeStart, 9.5, 34, MATS.slate);
+      addSurfaceOverlay(1.8, y8, z8BridgeStart - 8, 4.8, 2.6, 'hazard', MATS.hazard, 0.35);
+      addSurfaceOverlay(6.2, y8, z8BridgeStart - 16, 4.8, 2.6, 'hazard', MATS.hazard, 0.35);
+      addSweeper(4, y8, z8BridgeStart - 25, 8.6, 1.75, 0.4);
+
+      const z8End = z8BridgeStart - 34;
+      addDeck(4, y8, z8End, 11, 13, MATS.purple);
+      addCheckpoint(8, 4, y8, z8End - 6, 0);
+      const z9Start = z8End - 13;
+
+      addDeck(4, y8, z9Start, 9, 10, MATS.cyan);
+      addSurfaceOverlay(4, y8, z9Start - 5, 5.5, 6.0, 'boost', MATS.boost, 0.22);
+      const rFin = addRampUp(4, y8, z9Start - 10, 9, 10, 20, MATS.yellow);
+      addSkyHoop(4, rFin.endY + 2.5, rFin.endZ - 5.5, 0xffd700);
+      addSkyHoop(4, rFin.endY + 1.6, rFin.endZ - 10.5, 0xff007f);
+
+      const finZStart = rFin.endZ - 12.5;
+      const finY = y8 + 1.0;
+      addDeck(4, finY, finZStart, 18, 24, MATS.finish, 1.8);
+
+      const finPos = new THREE.Vector3(4, finY, finZStart - 10);
+      const archG = new THREE.Group();
+      archG.position.copy(finPos);
+      scene.add(archG);
+      const goldPillar = new THREE.MeshPhysicalMaterial({ color: 0xffd700, emissive: 0x885500, metalness: 0.88, roughness: 0.16, clearcoat: 0.9 });
+      for (const sx of [-6, 6]) {
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.55, 7, 16), goldPillar);
+        p.position.set(sx, 3.5, 0);
+        p.castShadow = true;
+        archG.add(p);
+      }
+      const banner = new THREE.Mesh(new THREE.BoxGeometry(13.2, 2.0, 0.7), MATS.finish);
+      banner.position.set(0, 6.6, 0);
+      archG.add(banner);
+      const crown = new THREE.Mesh(new THREE.OctahedronGeometry(1.1, 0), goldPillar);
+      crown.position.set(0, 9.2, 0);
+      archG.add(crown);
+      animatedRings.push(crown);
+
+      finishZone = {
+        x: finPos.x,
+        y: finY,
+        z: finPos.z,
+        halfW: 7.5,
+        halfD: 4.5,
+        startZ: 4.0,
+        totalDist: 4.0 - finPos.z
+      };
+    })();
+
+    // =========================================================================
+    // 9. GAME STATE, PERSISTENCE & REUSABLE MATH VECTORS
+    // =========================================================================
+    const keys = { up: false, down: false, left: false, right: false, jump: false };
+    let jumpJustPressed = false;
+
+    const bike = {
+      pos: new THREE.Vector3(0, 0.05, 4),
+      vel: new THREE.Vector3(0, 0, 0),
+      yaw: 0,
+      pitch: 0,
+      roll: 0,
+      steerAngle: 0,
+      wheelSpin: 0,
+      grounded: false,
+      groundedPlatform: null,
+      groundNormal: new THREE.Vector3(0, 1, 0),
+      squash: 1.0,
+      squashVel: 0,
+      boostTimer: 0,
+      coyoteTimer: 0,
+      jumpBuffer: 0,
+      surfacePitch: 0
+    };
+
+    const game = {
+      state: STATE.TITLE,
+      elapsedTime: 0,
+      runTime: 0,
+      bounces: 0,
+      reboundBoosts: 0,
+      boostStreak: 0,
+      bestStreak: 0,
+      activeCheckpointIdx: 0,
+      customAnchor: { active: false, pos: new THREE.Vector3(), yaw: 0, cooldown: 0 },
+      wipeoutTimer: 0,
+      bounceBack: {
+        t: 0,
+        duration: 0.75,
+        p0: new THREE.Vector3(),
+        p1: new THREE.Vector3(),
+        p2: new THREE.Vector3(),
+        targetYaw: 0,
+        boostLockedOut: false,
+        boostTriggered: false,
+        postLandGrace: 0
+      },
+      hitstop: 0,
+      shake: 0,
+      bloomEnabled: !isSoftwareGl,
+      povMode: 'chase',
+      prevStateBeforePause: STATE.PLAYING,
+      bestSave: { bestTimeMs: null, bestStreak: 0 }
+    };
+
+    if (isSoftwareGl) {
+      document.getElementById('btn-bloom').textContent = 'FX: FAST';
+    }
+
+    try {
+      const raw = localStorage.getItem(CONFIG.SAVE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          game.bestSave = {
+            bestTimeMs: typeof parsed.bestTimeMs === 'number' ? parsed.bestTimeMs : null,
+            bestStreak: typeof parsed.bestStreak === 'number' ? parsed.bestStreak : 0
+          };
+        }
+      }
+    } catch (_) {}
+
+    function saveBestRun(timeMs, streak) {
+      let improved = false;
+      if (game.bestSave.bestTimeMs === null || timeMs < game.bestSave.bestTimeMs) {
+        game.bestSave.bestTimeMs = timeMs;
+        improved = true;
+      }
+      if (streak > game.bestSave.bestStreak) game.bestSave.bestStreak = streak;
+      try {
+        localStorage.setItem(CONFIG.SAVE_KEY, JSON.stringify(game.bestSave));
+      } catch (_) {}
+      return improved;
+    }
+
+    function formatTime(sec) {
+      const mins = Math.floor(sec / 60);
+      const rem = sec % 60;
+      const whole = Math.floor(rem);
+      const tenths = Math.floor((rem - whole) * 10);
+      return `${String(mins).padStart(2, '0')}:${String(whole).padStart(2, '0')}.${tenths}`;
+    }
+
+    const toastEl = document.getElementById('toast-banner');
+    let toastTimeout = null;
+    function showToast(text, borderHex = '#00f5ff') {
+      toastEl.textContent = text;
+      toastEl.style.borderColor = borderHex;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => toastEl.classList.remove('show'), 1450);
+    }
+
+    function updateBestDisplays() {
+      const bt = game.bestSave.bestTimeMs !== null ? formatTime(game.bestSave.bestTimeMs / 1000) : '--:--.-';
+      const txt = `Best Time: ${bt} · Best Boost Streak: ${game.bestSave.bestStreak}`;
+      document.getElementById('title-best').textContent = txt;
+      document.getElementById('finish-best').textContent = txt;
+    }
+    updateBestDisplays();
+
+    const _vec = new THREE.Vector3();
+    const _closest = new THREE.Vector3();
+    const _delta = new THREE.Vector3();
+    const _hitNorm = new THREE.Vector3();
+    const _prevPos = new THREE.Vector3();
+    const _fwd = new THREE.Vector3();
+    const _right = new THREE.Vector3();
+    const _horizVel = new THREE.Vector3();
+    const _sphereCenter = new THREE.Vector3();
+    const _tetherAnchor = new THREE.Vector3();
+    const _tetherBike = new THREE.Vector3();
+    const _burstPos = new THREE.Vector3();
+    const _targetCam = new THREE.Vector3();
+    const _targetLook = new THREE.Vector3();
+
+    // =========================================================================
+    // 10. WIPEOUT, ELASTIC BOUNCE-BACK & REBOUND BOOST (Intact Mechanics)
+    // =========================================================================
+    function getActiveSpawn() {
+      if (game.customAnchor.active) {
+        return { pos: game.customAnchor.pos, yaw: game.customAnchor.yaw };
+      }
+      const cp = checkpoints[game.activeCheckpointIdx];
+      return { pos: cp.spawnPos, yaw: cp.yaw };
+    }
+
+    function triggerWipeout(reason = 'WIPEOUT!', fast = false) {
+      if (game.state !== STATE.PLAYING) return;
+      game.state = STATE.WIPEOUT;
+      game.wipeoutTimer = fast ? 0.08 : 0.30;
+      game.shake = fast ? 0.25 : 0.65;
+      game.bounces++;
+      if (!fast) {
+        sfx.playWipeout();
+        _burstPos.copy(bike.pos).setY(bike.pos.y + 0.6);
+        particles.burst(_burstPos, 22, [0xff007f, 0xffd700, 0x00f5ff], 11, 1.1, 0.55);
+        showToast(reason, '#ff007f');
+      }
+    }
+
+    function startBounceBack() {
+      const spawn = getActiveSpawn();
+      const p0 = bike.pos;
+      const p2 = spawn.pos;
+      const dist = p0.distanceTo(p2);
+      const midX = (p0.x + p2.x) * 0.5;
+      const midZ = (p0.z + p2.z) * 0.5;
+      const arcHeight = Math.min(26, Math.max(5.5, dist * 0.28));
+
+      const dur = Math.min(1.05, Math.max(0.54, 0.48 + dist * 0.011));
+      game.bounceBack.t = 0;
+      game.bounceBack.duration = dur;
+      game.bounceBack.p0.copy(p0);
+      game.bounceBack.p1.set(midX, Math.max(p0.y, p2.y) + arcHeight, midZ);
+      game.bounceBack.p2.copy(p2);
+      game.bounceBack.targetYaw = spawn.yaw;
+      game.bounceBack.boostLockedOut = false;
+      game.bounceBack.boostTriggered = false;
+
+      game.state = STATE.BOUNCE_BACK;
+      sfx.playElasticZip(dur);
+    }
+
+    function executeReboundBoost() {
+      const bb = game.bounceBack;
+      bb.boostTriggered = true;
+      bb.postLandGrace = 0;
+      document.getElementById('rebound-prompt').style.display = 'none';
+
+      bike.pos.copy(bb.p2);
+      bike.yaw = bb.targetYaw;
+      bike.pitch = 0.14;
+      bike.roll = 0;
+
+      _fwd.set(-Math.sin(bike.yaw), 0, -Math.cos(bike.yaw));
+      bike.vel.copy(_fwd).multiplyScalar(CONFIG.REBOUND_FWD_SPEED);
+      bike.vel.y = CONFIG.REBOUND_UP_VEL;
+      bike.grounded = false;
+      bike.groundedPlatform = null;
+      bike.boostTimer = 1.65;
+      bike.squash = 1.28;
+
+      game.state = STATE.PLAYING;
+      tetherVisual.hide();
+
+      game.hitstop = CONFIG.HITSTOP_SEC;
+      game.shake = 0.4;
+      game.reboundBoosts++;
+      game.boostStreak++;
+      if (game.boostStreak > game.bestStreak) game.bestStreak = game.boostStreak;
+
+      sfx.playReboundBoost();
+      _burstPos.copy(bike.pos).setY(bike.pos.y + 0.5);
+      particles.burst(_burstPos, 32, [0xffd700, 0x00f5ff, 0xffffff, 0xff007f], 13, 1.25, 0.7);
+      showToast(`REBOUND BOOST x${game.boostStreak}!`, '#ffd700');
+    }
+
+    function tryDropCustomAnchor() {
+      if (game.state !== STATE.PLAYING) return;
+      if (game.customAnchor.cooldown > 0) return;
+      if (!bike.grounded || (bike.groundedPlatform && bike.groundedPlatform.type !== 'solid')) {
+        showToast('Land on a solid block to drop Anchor!', '#ff007f');
+        return;
+      }
+      game.customAnchor.active = true;
+      game.customAnchor.pos.copy(bike.pos);
+      game.customAnchor.yaw = bike.yaw;
+      game.customAnchor.cooldown = CONFIG.ANCHOR_COOLDOWN;
+      customAnchorVisual.show(bike.pos);
+      sfx.playAnchorDrop();
+      _burstPos.copy(bike.pos).setY(bike.pos.y + 0.3);
+      particles.burst(_burstPos, 14, [0x00f5ff, 0xffffff], 6, 0.8, 0.45);
+      showToast('ANCHOR DROPPED!', '#00f5ff');
+    }
+
+    function resetCourseRun() {
+      game.runTime = 0;
+      game.bounces = 0;
+      game.reboundBoosts = 0;
+      game.boostStreak = 0;
+      game.bestStreak = 0;
+      game.activeCheckpointIdx = 0;
+      game.customAnchor.active = false;
+      game.customAnchor.cooldown = 0;
+      customAnchorVisual.hide();
+      tetherVisual.hide();
+
+      for (let i = 0; i < checkpoints.length; i++) {
+        checkpoints[i].activated = i === 0;
+        checkpoints[i].glowMat.color.setHex(i === 0 ? 0x00f5ff : 0xffd700);
+      }
+
+      bike.pos.copy(checkpoints[0].spawnPos);
+      bike.vel.set(0, 0, 0);
+      bike.yaw = 0;
+      bike.pitch = 0;
+      bike.roll = 0;
+      bike.steerAngle = 0;
+      bike.grounded = false;
+      bike.groundedPlatform = null;
+      bike.boostTimer = 0;
+      bike.squash = 1.0;
+
+      document.getElementById('rebound-prompt').style.display = 'none';
+      document.getElementById('screen-title').classList.add('hidden');
+      document.getElementById('screen-pause').classList.add('hidden');
+      document.getElementById('screen-finish').classList.add('hidden');
+      document.getElementById('hud').style.display = 'block';
+
+      game.state = STATE.PLAYING;
+    }
+
+    // =========================================================================
+    // 11. OBB COLLISION & BIKE PHYSICS STEP (Intact Physics)
+    // =========================================================================
+    function sphereVsOBB(sphereCenter, radius, obb) {
+      _vec.subVectors(sphereCenter, obb.center);
+      const lx = THREE.MathUtils.clamp(_vec.dot(obb.uX), -obb.half.x, obb.half.x);
+      const ly = THREE.MathUtils.clamp(_vec.dot(obb.uY), -obb.half.y, obb.half.y);
+      const lz = THREE.MathUtils.clamp(_vec.dot(obb.uZ), -obb.half.z, obb.half.z);
+
+      _closest.copy(obb.center)
+        .addScaledVector(obb.uX, lx)
+        .addScaledVector(obb.uY, ly)
+        .addScaledVector(obb.uZ, lz);
+
+      _delta.subVectors(sphereCenter, _closest);
+      const distSq = _delta.lengthSq();
+      if (distSq >= radius * radius) return -1;
+
+      const dist = Math.sqrt(distSq);
+      if (dist > 1e-5) _hitNorm.copy(_delta).divideScalar(dist);
+      else _hitNorm.copy(obb.uY);
+      return radius - dist;
+    }
+
+    function updateDynamicObstacles(dt, t) {
+      // Animate hazard chevrons smoothly
+      if (animatedHazardTex) {
+        animatedHazardTex.offset.y = (t * 0.55) % 1;
+      }
+
+      // Spin & float distant cyber skyline rings
+      for (let i = 0; i < bgSkyRings.length; i++) {
+        const r = bgSkyRings[i];
+        r.rotation.z += dt * r.userData.spin;
+        r.position.y = r.userData.baseY + Math.sin(t * 0.8 + r.userData.phase) * 1.4;
+      }
+
+      // Bob holographic cyberpunk billboards
+      for (let i = 0; i < bgBillboards.length; i++) {
+        const b = bgBillboards[i];
+        b.position.y = b.userData.baseY + Math.sin(t * 1.1 + b.userData.phase) * 0.65;
+      }
+
+      // Sweep volumetric sky searchlight beams
+      for (let i = 0; i < bgSearchlights.length; i++) {
+        const s = bgSearchlights[i];
+        s.rotation.z = s.userData.side * 0.25 + Math.sin(t * 0.45 + s.userData.phase) * 0.18;
+        s.rotation.x = Math.cos(t * 0.38 + s.userData.phase) * 0.14;
+      }
+
+      // Animate flying cyber-traffic light streaks
+      for (let i = 0; i < cyberTraffic.length; i++) {
+        const tr = cyberTraffic[i];
+        tr.position.z += tr.userData.speed * dt;
+        if (tr.position.z < -420) tr.position.z = 60;
+        else if (tr.position.z > 60) tr.position.z = -420;
+      }
+
+      for (let i = 0; i < movingPlatforms.length; i++) {
+        const mp = movingPlatforms[i];
+        _prevPos.copy(mp.obb.mesh.position);
+        const s = Math.sin(t * mp.speed + mp.phase);
+        mp.obb.mesh.position.copy(mp.basePos).addScaledVector(mp.axis, s * mp.amp);
+        mp.obb.deltaPos.subVectors(mp.obb.mesh.position, _prevPos);
+        mp.obb.vel.copy(mp.obb.deltaPos).divideScalar(dt);
+        syncOBBTransform(mp.obb);
+      }
+      for (let i = 0; i < sweepers.length; i++) {
+        const sw = sweepers[i];
+        sw.barMesh.rotation.y = t * sw.angularSpeed + sw.phase;
+        syncOBBTransform(sw.obb);
+      }
+      for (let i = 0; i < animatedRings.length; i++) {
+        animatedRings[i].rotation.z += dt * 0.9;
+      }
+      for (let i = 0; i < checkpoints.length; i++) {
+        const cp = checkpoints[i];
+        cp.beacon.rotation.y += dt * 2.2;
+        cp.beacon.position.y = 8.1 + Math.sin(t * 3 + cp.index) * 0.25;
+      }
+    }
+
+    function stepPhysics(dt) {
+      game.elapsedTime += dt;
+      updateDynamicObstacles(dt, game.elapsedTime);
+
+      if (game.customAnchor.cooldown > 0) {
+        game.customAnchor.cooldown = Math.max(0, game.customAnchor.cooldown - dt);
+      }
+      customAnchorVisual.animate(game.elapsedTime);
+
+      if (game.state === STATE.WIPEOUT) {
+        bike.vel.y -= CONFIG.GRAVITY * dt;
+        bike.pos.addScaledVector(bike.vel, dt);
+        bike.roll += 9.5 * dt;
+        bike.pitch += 6.0 * dt;
+        game.wipeoutTimer -= dt;
+        if (game.wipeoutTimer <= 0) startBounceBack();
+        return;
+      }
+
+      if (game.state === STATE.BOUNCE_BACK) {
+        const bb = game.bounceBack;
+        bb.t += dt / bb.duration;
+        const p = Math.min(1, bb.t);
+        const u = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+        const oneMinusU = 1 - u;
+
+        bike.pos.set(
+          oneMinusU * oneMinusU * bb.p0.x + 2 * oneMinusU * u * bb.p1.x + u * u * bb.p2.x,
+          oneMinusU * oneMinusU * bb.p0.y + 2 * oneMinusU * u * bb.p1.y + u * u * bb.p2.y,
+          oneMinusU * oneMinusU * bb.p0.z + 2 * oneMinusU * u * bb.p1.z + u * u * bb.p2.z
+        );
+
+        bike.yaw = THREE.MathUtils.lerp(bike.yaw, bb.targetYaw, dt * 8);
+        bike.roll = THREE.MathUtils.lerp(bike.roll, 0, dt * 10);
+        bike.pitch = THREE.MathUtils.lerp(bike.pitch, 0, dt * 10);
+        bike.wheelSpin -= 26 * dt;
+
+        _tetherAnchor.copy(bb.p2).setY(bb.p2.y + 0.6);
+        _tetherBike.copy(bike.pos).setY(bike.pos.y + 0.5);
+        tetherVisual.update(_tetherAnchor, _tetherBike, game.elapsedTime, p);
+
+        if (Math.random() < 0.65) {
+          _burstPos.set(
+            bike.pos.x + (Math.random() - 0.5) * 0.6,
+            bike.pos.y + 0.4,
+            bike.pos.z + (Math.random() - 0.5) * 0.6
+          );
+          _pVel.set(0, 1.5, 0);
+          particles.spawn(_burstPos, _pVel, p >= 0.64 ? 0xffd700 : 0x00f5ff, 0.9, 0.35, 2);
+        }
+
+        const prompt = document.getElementById('rebound-prompt');
+        const ringOuter = document.getElementById('rebound-ring-outer');
+        const labelTxt = document.getElementById('rebound-label-text');
+        if (!bb.boostLockedOut) {
+          prompt.style.display = 'flex';
+          const scale = Math.max(0.58, 1.75 - p * 1.15);
+          ringOuter.style.transform = `scale(${scale})`;
+          if (p >= 0.64) {
+            ringOuter.style.borderColor = '#ffd700';
+            labelTxt.textContent = 'PRESS SPACE NOW!';
+            labelTxt.style.color = '#ffd700';
+          } else {
+            ringOuter.style.borderColor = 'rgba(255,255,255,0.45)';
+            labelTxt.textContent = 'WAIT FOR GOLD RING...';
+            labelTxt.style.color = '#ffffff';
+          }
+        }
+
+        if (jumpJustPressed) {
+          if (p >= 0.64 && !bb.boostLockedOut) {
+            executeReboundBoost();
+            return;
+          } else if (p < 0.64) {
+            bb.boostLockedOut = true;
+            labelTxt.textContent = 'TOO EARLY!';
+            labelTxt.style.color = '#ff007f';
+          }
+        }
+
+        if (p >= 1) {
+          bike.pos.copy(bb.p2);
+          bike.yaw = bb.targetYaw;
+          bike.vel.set(0, 0, 0);
+          bike.grounded = true;
+          bike.squash = 0.74;
+          tetherVisual.hide();
+          sfx.playLand(1.1);
+          if (!bb.boostLockedOut) {
+            bb.postLandGrace = 0.16;
+          } else {
+            prompt.style.display = 'none';
+            game.boostStreak = 0;
+          }
+          game.state = STATE.PLAYING;
+        }
+        return;
+      }
+
+      if (game.state !== STATE.PLAYING) return;
+      game.runTime += dt;
+
+      if (game.bounceBack.postLandGrace > 0) {
+        game.bounceBack.postLandGrace -= dt;
+        if (jumpJustPressed && !game.bounceBack.boostLockedOut) {
+          executeReboundBoost();
+          return;
+        }
+        if (game.bounceBack.postLandGrace <= 0) {
+          document.getElementById('rebound-prompt').style.display = 'none';
+          if (!game.bounceBack.boostTriggered) game.boostStreak = 0;
+        }
+      }
+
+      if (bike.grounded && bike.groundedPlatform) {
+        bike.pos.add(bike.groundedPlatform.deltaPos);
+      }
+
+      if (bike.boostTimer > 0) bike.boostTimer -= dt;
+      if (bike.coyoteTimer > 0) bike.coyoteTimer -= dt;
+      if (bike.jumpBuffer > 0) bike.jumpBuffer -= dt;
+      if (jumpJustPressed) bike.jumpBuffer = 0.14;
+
+      _fwd.set(-Math.sin(bike.yaw), 0, -Math.cos(bike.yaw));
+      _right.set(Math.cos(bike.yaw), 0, -Math.sin(bike.yaw));
+      _horizVel.set(bike.vel.x, 0, bike.vel.z);
+
+      let fwdSpeed = _horizVel.dot(_fwd);
+      let latSpeed = _horizVel.dot(_right);
+      const steerInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
+
+      if (bike.grounded) {
+        const speedFactor = 0.45 + 0.55 * Math.min(1, Math.abs(fwdSpeed) / 10);
+        const dirSign = fwdSpeed < -0.5 ? -1 : 1;
+        bike.yaw += steerInput * CONFIG.STEER_RATE * speedFactor * dirSign * dt;
+        bike.steerAngle = THREE.MathUtils.lerp(bike.steerAngle, steerInput * 0.42, dt * 12);
+
+        const targetRoll = steerInput * Math.min(0.42, Math.abs(fwdSpeed) * 0.022);
+        bike.roll = THREE.MathUtils.lerp(bike.roll, targetRoll, dt * 10);
+
+        _fwd.set(-Math.sin(bike.yaw), 0, -Math.cos(bike.yaw));
+        _right.set(Math.cos(bike.yaw), 0, -Math.sin(bike.yaw));
+
+        const maxSpd = bike.boostTimer > 0 ? CONFIG.BOOST_SPEED : CONFIG.MAX_SPEED;
+        if (keys.up) {
+          fwdSpeed += CONFIG.ACCEL * dt;
+          if (fwdSpeed > maxSpd) fwdSpeed = THREE.MathUtils.lerp(fwdSpeed, maxSpd, dt * 4);
+        } else if (keys.down) {
+          if (fwdSpeed > 0.5) fwdSpeed -= CONFIG.BRAKE_DECEL * dt;
+          else fwdSpeed = Math.max(-CONFIG.REVERSE_MAX, fwdSpeed - CONFIG.ACCEL * 0.55 * dt);
+        } else {
+          fwdSpeed *= Math.max(0, 1 - CONFIG.GROUND_DRAG * dt);
+          if (Math.abs(fwdSpeed) < 0.35) fwdSpeed = 0;
+          if (fwdSpeed > 4.0) {
+            sfx.coastTickAccum += fwdSpeed * dt;
+            if (sfx.coastTickAccum > 2.2) {
+              sfx.coastTickAccum = 0;
+              sfx.playFreewheelTick();
+            }
+          }
+        }
+
+        latSpeed *= Math.max(0, 1 - 14.0 * dt);
+        bike.vel.x = _fwd.x * fwdSpeed + _right.x * latSpeed;
+        bike.vel.z = _fwd.z * fwdSpeed + _right.z * latSpeed;
+
+        const slopeFwd = -_fwd.dot(bike.groundNormal);
+        bike.surfacePitch = Math.asin(THREE.MathUtils.clamp(slopeFwd, -0.75, 0.75));
+        bike.pitch = THREE.MathUtils.lerp(bike.pitch, bike.surfacePitch, dt * 14);
+      } else {
+        bike.yaw += steerInput * CONFIG.AIR_STEER_RATE * dt;
+        bike.steerAngle = THREE.MathUtils.lerp(bike.steerAngle, steerInput * 0.25, dt * 8);
+        bike.roll = THREE.MathUtils.lerp(bike.roll, steerInput * 0.28, dt * 6);
+
+        const pitchInput = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+        if (pitchInput !== 0) {
+          bike.pitch += pitchInput * CONFIG.AIR_PITCH_RATE * dt;
+        } else {
+          bike.pitch = THREE.MathUtils.lerp(bike.pitch, THREE.MathUtils.clamp(bike.vel.y * 0.018, -0.45, 0.45), dt * 2.5);
+        }
+        bike.pitch = THREE.MathUtils.clamp(bike.pitch, -1.65, 1.65);
+      }
+
+      if (bike.jumpBuffer > 0 && (bike.grounded || bike.coyoteTimer > 0)) {
+        if (bike.groundedPlatform) {
+          bike.vel.x += bike.groundedPlatform.vel.x * 0.85;
+          bike.vel.z += bike.groundedPlatform.vel.z * 0.85;
+          bike.vel.y = Math.max(bike.vel.y, 0) + bike.groundedPlatform.vel.y * 0.5;
+        }
+        bike.vel.y = Math.max(bike.vel.y, 0) + CONFIG.JUMP_VEL;
+        bike.grounded = false;
+        bike.groundedPlatform = null;
+        bike.coyoteTimer = 0;
+        bike.jumpBuffer = 0;
+        bike.squash = 1.24;
+        sfx.playHop();
+        particles.burst(bike.pos, 7, [0xffffff, 0x00f5ff], 4.5, 0.6, 0.35);
+      }
+
+      bike.vel.y -= CONFIG.GRAVITY * dt;
+      bike.pos.addScaledVector(bike.vel, dt);
+
+      const wasGrounded = bike.grounded;
+      const preLandVy = bike.vel.y;
+      bike.grounded = false;
+      bike.groundedPlatform = null;
+
+      _sphereCenter.copy(bike.pos).setY(bike.pos.y + CONFIG.BIKE_RADIUS);
+
+      for (let i = 0; i < colliders.length; i++) {
+        const obb = colliders[i];
+        const depth = sphereVsOBB(_sphereCenter, CONFIG.BIKE_RADIUS, obb);
+        if (depth < 0) continue;
+
+        if (obb.type === 'hazard') {
+          triggerWipeout('CYBER-LASER WIPEOUT!');
+          return;
+        }
+
+        if (obb.type === 'bounce') {
+          bike.pos.y += depth;
+          _sphereCenter.y += depth;
+          bike.vel.y = CONFIG.BOUNCE_PAD_VEL;
+          bike.grounded = false;
+          bike.squash = 1.35;
+          sfx.playBouncePad();
+          particles.burst(bike.pos, 16, [0xff007f, 0xffd700, 0xffffff], 9, 0.9, 0.48);
+          continue;
+        }
+
+        if (obb.type === 'boost') {
+          bike.boostTimer = Math.max(bike.boostTimer, 1.3);
+          const bx = -Math.sin(bike.yaw);
+          const bz = -Math.cos(bike.yaw);
+          const curSpd = Math.hypot(bike.vel.x, bike.vel.z);
+          if (curSpd < CONFIG.BOOST_SPEED) {
+            bike.vel.x = bx * CONFIG.BOOST_SPEED;
+            bike.vel.z = bz * CONFIG.BOOST_SPEED;
+          }
+          if (Math.random() < 0.35) sfx.playSpeedPad();
+        }
+
+        _sphereCenter.addScaledVector(_hitNorm, depth);
+        bike.pos.addScaledVector(_hitNorm, depth);
+
+        const vn = bike.vel.dot(_hitNorm);
+        if (vn < 0) bike.vel.addScaledVector(_hitNorm, -vn);
+
+        if (_hitNorm.y > 0.45) {
+          bike.grounded = true;
+          bike.groundedPlatform = obb;
+          bike.groundNormal.copy(_hitNorm);
+          bike.coyoteTimer = 0.11;
+        }
+      }
+
+      if (!wasGrounded && bike.grounded && preLandVy < -4.0) {
+        if (Math.abs(bike.pitch - bike.surfacePitch) > 1.32) {
+          triggerWipeout('CRASH LANDING!');
+          return;
+        }
+        const impact = Math.min(1.6, Math.abs(preLandVy) / 14);
+        bike.squash = 1.0 - impact * 0.24;
+        sfx.playLand(impact);
+        particles.burst(bike.pos, 8, [0x00f5ff, 0xffd700], 4.2, 0.55, 0.3);
+      }
+
+      const groundSpeed = Math.hypot(bike.vel.x, bike.vel.z);
+      bike.wheelSpin -= (groundSpeed * dt) / 0.38;
+      if (bike.boostTimer > 0 && Math.random() < 0.7) {
+        _burstPos.set(
+          bike.pos.x + (Math.random() - 0.5) * 0.4,
+          bike.pos.y + 0.35,
+          bike.pos.z + (Math.random() - 0.5) * 0.4
+        );
+        _pVel.set(0, 1.0, 0);
+        particles.spawn(_burstPos, _pVel, 0xffd700, 0.75, 0.32, 4);
+      }
+
+      for (let i = 0; i < checkpoints.length; i++) {
+        const cp = checkpoints[i];
+        if (i <= game.activeCheckpointIdx) continue;
+        const dx = bike.pos.x - cp.spawnPos.x;
+        const dy = bike.pos.y - cp.spawnPos.y;
+        const dz = bike.pos.z - cp.spawnPos.z;
+        if (Math.abs(dx) < 4.5 && Math.abs(dz) < 3.0 && dy > -1.5 && dy < 5.0) {
+          cp.activated = true;
+          cp.glowMat.color.setHex(0x00f5ff);
+          game.activeCheckpointIdx = i;
+          if (game.customAnchor.active) {
+            game.customAnchor.active = false;
+            customAnchorVisual.hide();
+          }
+          sfx.playCheckpoint();
+          _burstPos.copy(cp.spawnPos).setY(cp.spawnPos.y + 1.5);
+          particles.burst(_burstPos, 24, [0x00f5ff, 0xff007f, 0xffd700], 9, 1.0, 0.65);
+          showToast(`CHECKPOINT ${i} LOCKED!`, '#00f5ff');
+        }
+      }
+
+      if (finishZone) {
+        if (
+          Math.abs(bike.pos.x - finishZone.x) < finishZone.halfW &&
+          Math.abs(bike.pos.z - finishZone.z) < finishZone.halfD &&
+          bike.pos.y > finishZone.y - 1.5
+        ) {
+          triggerFinish();
+          return;
+        }
+      }
+
+      if (bike.pos.y < CONFIG.FALL_VOID_Y) {
+        triggerWipeout('FELL INTO THE VOID!');
+      }
+    }
+
+    function triggerFinish() {
+      game.state = STATE.FINISH;
+      tetherVisual.hide();
+      document.getElementById('rebound-prompt').style.display = 'none';
+      sfx.playFinish();
+      _burstPos.copy(bike.pos).setY(bike.pos.y + 2.0);
+      particles.burst(_burstPos, 70, [0xffd700, 0x00f5ff, 0xff007f, 0x38f9a5], 15, 1.4, 1.4, 10);
+
+      const timeMs = Math.round(game.runTime * 1000);
+      const isNewRecord = saveBestRun(timeMs, game.bestStreak);
+      updateBestDisplays();
+
+      document.getElementById('fin-time').textContent = formatTime(game.runTime);
+      document.getElementById('fin-bounces').textContent = game.bounces;
+      document.getElementById('fin-boosts').textContent = `${game.reboundBoosts} (x${game.bestStreak})`;
+      document.getElementById('finish-msg').textContent = isNewRecord
+        ? 'NEW BEST TIME! You shredded the cyber skyline!'
+        : 'You bounced back from every wipeout and crossed the Haven Finish!';
+
+      setTimeout(() => {
+        if (game.state === STATE.FINISH) {
+          document.getElementById('screen-finish').classList.remove('hidden');
+        }
+      }, 650);
+    }
+
+    // =========================================================================
+    // 12. SMOOTH ELEVATED CHASE CAMERA, VISUAL SYNC, AUDIO HUM & HUD
+    // =========================================================================
+    const camPos = new THREE.Vector3(0, 4.5, 11.5);
+    const camLook = new THREE.Vector3(0, 1.2, 0.5);
+    const _fpvEye = new THREE.Vector3();
+    const _fpvLook = new THREE.Vector3();
+
+    function updateVisualsAndCamera(dt) {
+      const squashForce = (1.0 - bike.squash) * 140;
+      bike.squashVel = (bike.squashVel + squashForce * dt) * Math.exp(-14 * dt);
+      bike.squash += bike.squashVel * dt;
+      const sy = THREE.MathUtils.clamp(bike.squash, 0.68, 1.38);
+      const sxz = 1 / Math.sqrt(sy);
+      bikeRig.squashRoot.scale.set(sxz, sy, sxz);
+
+      bikeRig.root.position.copy(bike.pos);
+      bikeRig.root.rotation.y = bike.yaw;
+      bikeRig.tiltRoot.rotation.order = 'YXZ';
+      bikeRig.tiltRoot.rotation.x = bike.pitch;
+      bikeRig.tiltRoot.rotation.z = bike.roll;
+
+      bikeRig.frontSteerGroup.rotation.y = bike.steerAngle;
+      bikeRig.frontWheel.rotation.x = bike.wheelSpin;
+      bikeRig.rearWheel.rotation.x = bike.wheelSpin;
+
+      // Pedaling crank + counter-rotating pedals + 2-bone leg IK
+      const crankAngle = bike.wheelSpin * 0.55;
+      bikeRig.crankGroup.rotation.x = crankAngle;
+      bikeRig.pedalL.rotation.x = -crankAngle;
+      bikeRig.pedalR.rotation.x = -crankAngle;
+
+      // Rider dynamic attack posture (stands slightly off seat in mid-air / sprints)
+      const airStand = bike.grounded ? 0.0 : 0.08;
+      bikeRig.riderGroup.position.y = THREE.MathUtils.lerp(bikeRig.riderGroup.position.y, 1.00 + airStand, Math.min(1, dt * 12));
+      bikeRig.riderGroup.rotation.z = bike.roll * 0.52;
+      bikeRig.torsoPivot.rotation.x = THREE.MathUtils.lerp(
+        bikeRig.torsoPivot.rotation.x,
+        bike.boostTimer > 0 ? 0.58 : 0.42,
+        Math.min(1, dt * 10)
+      );
+      bikeRig.headGroup.rotation.y = bike.steerAngle * 0.45;
+
+      // Zero-GC 2-bone YZ leg IK locking rider boots to moving pedals
+      const hy = bikeRig.riderGroup.position.y - 0.01;
+      const hz = 0.28;
+      const L1 = 0.34;
+      const L2 = 0.34;
+      const solveLeg = (leg, sign) => {
+        const py = 0.45 - Math.sin(crankAngle) * 0.16 * sign;
+        const pz = 0.06 + Math.cos(crankAngle) * 0.16 * sign;
+        const dy = py - hy;
+        const dz = pz - hz;
+        const d = THREE.MathUtils.clamp(Math.hypot(dy, dz), 0.12, L1 + L2 - 0.01);
+        const alpha = Math.atan2(-dz, -dy);
+        const cosA = THREE.MathUtils.clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1);
+        const aOff = Math.acos(cosA);
+        leg.hipPivot.rotation.x = alpha + aOff;
+        leg.kneePivot.rotation.x = -2 * aOff;
+      };
+      solveLeg(bikeRig.legL, 1);
+      solveLeg(bikeRig.legR, -1);
+
+      bikeRig.root.updateMatrixWorld(true);
+
+      const speed = Math.hypot(bike.vel.x, bike.vel.z);
+      const speedNorm = Math.min(1, speed / CONFIG.BOOST_SPEED);
+
+      // Update holo-dash telemetry bar & underglow / thruster colors
+      bikeRig.dashBoostBar.scale.x = Math.max(0.15, speedNorm);
+      if (bike.boostTimer > 0) {
+        bikeRig.thrusterMat.color.setHex(0xffd700);
+        bikeRig.thrusterMat.emissive.setHex(0xffd700);
+        bikeRig.thrusterMat.emissiveIntensity = 1.05;
+        bikeRig.dashBoostBarMat.color.setHex(0xffd700);
+      } else {
+        bikeRig.thrusterMat.color.setHex(0x00f5ff);
+        bikeRig.thrusterMat.emissive.setHex(0x00f5ff);
+        bikeRig.thrusterMat.emissiveIntensity = 0.65;
+        bikeRig.dashBoostBarMat.color.setHex(0x00f5ff);
+      }
+
+      // Update local cyberpunk rain streaks around bike
+      if (rainSystem) {
+        const posArr = rainSystem.positions;
+        const offs = rainSystem.offsets;
+        for (let i = 0; i < rainSystem.count; i++) {
+          const o = offs[i];
+          o.y -= o.spd * dt;
+          o.z += 2.5 * dt;
+          if (o.y < -13) o.y += 26;
+          if (o.z > 22) o.z -= 44;
+          const bx = bike.pos.x + o.x;
+          const by = bike.pos.y + o.y;
+          const bz = bike.pos.z + o.z;
+          const idx = i * 6;
+          posArr[idx] = bx;
+          posArr[idx + 1] = by;
+          posArr[idx + 2] = bz;
+          posArr[idx + 3] = bx - 0.04;
+          posArr[idx + 4] = by + 0.72;
+          posArr[idx + 5] = bz + 0.14;
+        }
+        rainSystem.geo.attributes.position.needsUpdate = true;
+      }
+
+      // Update continuous floating digital dust motes around bike
+      if (digitalDustSystem) {
+        const dPos = digitalDustSystem.positions;
+        const motes = digitalDustSystem.motes;
+        const t = game.elapsedTime;
+        for (let i = 0; i < digitalDustSystem.count; i++) {
+          const m = motes[i];
+          m.ox += (m.vx + Math.sin(t * 0.9 + m.phase) * 0.45) * dt;
+          m.oy += m.vy * dt;
+          m.oz += (m.vz + Math.cos(t * 0.7 + m.phase) * 0.45) * dt;
+          if (m.oy > 12) m.oy -= 24;
+          if (m.ox > 26) m.ox -= 52;
+          else if (m.ox < -26) m.ox += 52;
+          if (m.oz > 28) m.oz -= 56;
+          else if (m.oz < -28) m.oz += 56;
+          const idx = i * 3;
+          dPos[idx] = bike.pos.x + m.ox;
+          dPos[idx + 1] = bike.pos.y + m.oy;
+          dPos[idx + 2] = bike.pos.z + m.oz;
+        }
+        digitalDustSystem.geo.attributes.position.needsUpdate = true;
+      }
+
+      // Render radial speed streaks when accelerating fast or triggering Rebound Boost
+      {
+        const ss = speedStreakOverlay;
+        const isActivePlay = game.state === STATE.PLAYING || game.state === STATE.BOUNCE_BACK;
+        const accelFactor = isActivePlay
+          ? Math.max(0, (speedNorm - 0.52) / 0.48) + (bike.boostTimer > 0 ? 0.85 : 0)
+          : 0;
+        const targetInt = THREE.MathUtils.clamp(accelFactor, 0, 1);
+        ss.intensity = THREE.MathUtils.lerp(ss.intensity, targetInt, Math.min(1, dt * 8));
+
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        ss.ctx.clearRect(0, 0, w, h);
+        if (ss.intensity > 0.02) {
+          const cx = w * 0.5;
+          const cy = h * 0.5;
+          const maxR = Math.hypot(cx, cy);
+          const isGold = bike.boostTimer > 0;
+          for (let i = 0; i < ss.rays.length; i++) {
+            const r = ss.rays[i];
+            const pulse = 0.5 + 0.5 * Math.sin(game.elapsedTime * 22 + r.seed);
+            const r0 = maxR * (r.innerFrac - ss.intensity * 0.14 + pulse * 0.08);
+            const r1 = maxR * 1.06;
+            const cos = Math.cos(r.angle);
+            const sin = Math.sin(r.angle);
+            const grad = ss.ctx.createLinearGradient(cx + cos * r0, cy + sin * r0, cx + cos * r1, cy + sin * r1);
+            grad.addColorStop(0, 'rgba(0, 245, 255, 0)');
+            grad.addColorStop(
+              1,
+              isGold
+                ? `rgba(255, 215, 0, ${(ss.intensity * (0.28 + pulse * 0.25)).toFixed(3)})`
+                : `rgba(0, 245, 255, ${(ss.intensity * (0.20 + pulse * 0.18)).toFixed(3)})`
+            );
+            ss.ctx.strokeStyle = grad;
+            ss.ctx.lineWidth = r.width * (isGold ? 1.45 : 1.0);
+            ss.ctx.beginPath();
+            ss.ctx.moveTo(cx + cos * r0, cy + sin * r0);
+            ss.ctx.lineTo(cx + cos * r1, cy + sin * r1);
+            ss.ctx.stroke();
+          }
+        }
+      }
+
+      sunLight.position.copy(bike.pos).add(sunOffset);
+      sunLight.target.position.copy(bike.pos);
+
+      // Update dynamic hover-chain audio hum
+      sfx.updateDriveHum(speed, bike.grounded, game.state, bike.boostTimer > 0);
+
+      // Toggle Rider vs First-Person Cockpit visibility & Visor HUD
+      const isFPVActive =
+        game.povMode === 'first' &&
+        (game.state === STATE.PLAYING || game.state === STATE.WIPEOUT || game.state === STATE.PAUSED);
+
+      bikeRig.riderGroup.visible = !isFPVActive;
+      bikeRig.fpvGloves.visible = isFPVActive;
+      const visorEl = document.getElementById('visor-overlay');
+      visorEl.style.display = isFPVActive ? 'block' : 'none';
+      visorEl.classList.toggle('boost-active', isFPVActive && bike.boostTimer > 0);
+
+      // Camera Update (Title, Finish, Chase Cam, or 1st-Person Rider POV)
+      if (game.state === STATE.TITLE) {
+        const angle = game.elapsedTime * 0.35;
+        _targetCam.set(bike.pos.x + Math.sin(angle) * 9.0, bike.pos.y + 4.1, bike.pos.z + Math.cos(angle) * 9.0);
+        _targetLook.set(bike.pos.x, bike.pos.y + 1.3, bike.pos.z - 2.0);
+        camPos.lerp(_targetCam, 1 - Math.exp(-4.5 * dt));
+        camLook.lerp(_targetLook, 1 - Math.exp(-5.5 * dt));
+        camera.fov = THREE.MathUtils.damp(camera.fov, 65, 4.5, dt);
+      } else if (game.state === STATE.FINISH) {
+        const angle = game.elapsedTime * 0.75;
+        _targetCam.set(bike.pos.x + Math.sin(angle) * 7.8, bike.pos.y + 3.6, bike.pos.z + Math.cos(angle) * 7.8);
+        _targetLook.set(bike.pos.x, bike.pos.y + 1.5, bike.pos.z);
+        camPos.lerp(_targetCam, 1 - Math.exp(-4.5 * dt));
+        camLook.lerp(_targetLook, 1 - Math.exp(-6.5 * dt));
+        camera.fov = THREE.MathUtils.damp(camera.fov, 66, 4.5, dt);
+      } else if (isFPVActive) {
+        // 1st-Person Helmet/Visor POV positioned right above cockpit & bars
+        const bob = bike.grounded ? Math.sin(bike.wheelSpin * 0.55) * 0.014 * speedNorm : 0;
+        _fpvEye.set(0, 1.62 + bob, 0.08).applyMatrix4(bikeRig.tiltRoot.matrixWorld);
+        _fpvLook.set(-bike.steerAngle * 0.55, 1.34 + bob * 0.5, -5.8).applyMatrix4(bikeRig.tiltRoot.matrixWorld);
+
+        camPos.lerp(_fpvEye, 1 - Math.exp(-26 * dt));
+        camLook.lerp(_fpvLook, 1 - Math.exp(-24 * dt));
+
+        const boostExtra = bike.boostTimer > 0 ? 5.0 : 0;
+        const targetFov = THREE.MathUtils.clamp(72 + speedNorm * 10.0 + boostExtra, 72, 86);
+        camera.fov = THREE.MathUtils.damp(camera.fov, targetFov, 7.0, dt);
+      } else {
+        _fwd.set(-Math.sin(bike.yaw), 0, -Math.cos(bike.yaw));
+        const isBounce = game.state === STATE.BOUNCE_BACK;
+
+        // Elevated action angle: ~(0, 4.2, -8.5) behind bike; pulls further back during Bounce Back
+        const distBack = isBounce ? 11.4 : 8.5 + Math.min(1.6, speed * 0.055);
+        const heightUp = isBounce ? 5.5 : 4.2;
+
+        _targetCam.copy(bike.pos).addScaledVector(_fwd, -distBack);
+        _targetCam.y += heightUp;
+
+        const lookDist = isBounce ? 1.8 : 3.5;
+        _targetLook.copy(bike.pos).addScaledVector(_fwd, lookDist);
+        _targetLook.x += bike.vel.x * 0.075;
+        _targetLook.y += 1.15;
+        _targetLook.z += bike.vel.z * 0.075;
+
+        const posDamp = isBounce ? 6.5 : 8.5;
+        const lookDamp = isBounce ? 8.0 : 11.5;
+        camPos.lerp(_targetCam, 1 - Math.exp(-posDamp * dt));
+        camLook.lerp(_targetLook, 1 - Math.exp(-lookDamp * dt));
+
+        const boostExtra = bike.boostTimer > 0 ? 4.5 : 0;
+        const targetFov = THREE.MathUtils.clamp(65 + speedNorm * 10.5 + boostExtra, 65, 78);
+        camera.fov = THREE.MathUtils.damp(camera.fov, targetFov, 6.0, dt);
+      }
+
+      camera.updateProjectionMatrix();
+      camera.position.copy(camPos);
+
+      if (game.shake > 0.005) {
+        camera.position.x += (Math.random() - 0.5) * game.shake;
+        camera.position.y += (Math.random() - 0.5) * game.shake;
+        game.shake *= Math.exp(-11 * dt);
+      }
+      camera.lookAt(camLook);
+
+      if (game.state === STATE.PLAYING || game.state === STATE.WIPEOUT || game.state === STATE.BOUNCE_BACK) {
+        document.getElementById('hud-time').textContent = formatTime(game.runTime);
+        document.getElementById('hud-bounces').textContent = game.bounces;
+        document.getElementById('hud-streak').textContent = `x${game.boostStreak}`;
+        document.getElementById('hud-speed').textContent = Math.round(speed * 3.6);
+
+        const pct = finishZone
+          ? THREE.MathUtils.clamp(((finishZone.startZ - bike.pos.z) / finishZone.totalDist) * 100, 0, 100)
+          : 0;
+        document.getElementById('hud-cp-label').textContent = `CP ${game.activeCheckpointIdx} / ${checkpoints.length - 1}`;
+        document.getElementById('hud-pct').textContent = `${Math.round(pct)}%`;
+        document.getElementById('hud-progress-fill').style.width = `${pct.toFixed(1)}%`;
+
+        const cdFrac = game.customAnchor.cooldown / CONFIG.ANCHOR_COOLDOWN;
+        document.getElementById('anchor-ring').style.strokeDashoffset = (cdFrac * 94.25).toFixed(2);
+        document.getElementById('anchor-status').textContent =
+          game.customAnchor.cooldown > 0
+            ? `Anchor (${game.customAnchor.cooldown.toFixed(1)}s)`
+            : game.customAnchor.active ? 'Anchor Active (E Move)' : 'Anchor Ready (E)';
+      }
+    }
+
+    // =========================================================================
+    // 13. INPUT, DOWNLOAD HTML, PAUSE, VISIBILITY & RESIZE
+    // =========================================================================
+    async function downloadStandaloneHtml() {
+      try {
+        const res = await fetch(window.location.href, { cache: 'no-store' });
+        if (res.ok) {
+          const htmlText = await res.text();
+          const blob = new Blob([htmlText], { type: 'text/html;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'skyspoke-rebound.html';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          return;
+        }
+      } catch (_) {}
+      const a = document.createElement('a');
+      a.href = window.location.href;
+      a.download = 'skyspoke-rebound.html';
+      a.click();
+    }
+
+    function togglePause(forcePause = null) {
+      if (game.state === STATE.TITLE || game.state === STATE.FINISH) return;
+      const shouldPause = forcePause !== null ? forcePause : game.state !== STATE.PAUSED;
+      if (shouldPause && game.state !== STATE.PAUSED) {
+        game.prevStateBeforePause = game.state;
+        game.state = STATE.PAUSED;
+        sfx.updateDriveHum(0, false, STATE.PAUSED, false);
+        document.getElementById('screen-pause').classList.remove('hidden');
+      } else if (!shouldPause && game.state === STATE.PAUSED) {
+        game.state = game.prevStateBeforePause || STATE.PLAYING;
+        document.getElementById('screen-pause').classList.add('hidden');
+      }
+    }
+
+    function onKey(e, isDown) {
+      sfx.init();
+      const code = e.code;
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(code)) {
+        e.preventDefault();
+      }
+      if (code === 'KeyW' || code === 'ArrowUp') keys.up = isDown;
+      if (code === 'KeyS' || code === 'ArrowDown') keys.down = isDown;
+      if (code === 'KeyA' || code === 'ArrowLeft') keys.left = isDown;
+      if (code === 'KeyD' || code === 'ArrowRight') keys.right = isDown;
+      if (code === 'Space') {
+        if (isDown && !keys.jump) jumpJustPressed = true;
+        keys.jump = isDown;
+      }
+
+      if (!isDown) return;
+      if (code === 'KeyE' || code === 'ShiftLeft' || code === 'ShiftRight') {
+        tryDropCustomAnchor();
+      } else if (code === 'KeyR') {
+        if (game.state === STATE.FINISH) resetCourseRun();
+        else if (game.state === STATE.PLAYING) triggerWipeout('BOUNCE BACK!', true);
+      } else if (code === 'Escape' || code === 'KeyP') {
+        togglePause();
+      } else if (code === 'KeyM') {
+        toggleMute();
+      } else if (code === 'KeyV' || code === 'KeyC') {
+        togglePovMode();
+      }
+    }
+
+    window.addEventListener('keydown', (e) => onKey(e, true));
+    window.addEventListener('keyup', (e) => onKey(e, false));
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && (game.state === STATE.PLAYING || game.state === STATE.BOUNCE_BACK)) {
+        togglePause(true);
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      keys.up = keys.down = keys.left = keys.right = keys.jump = false;
+    });
+
+    function toggleMute() {
+      sfx.init();
+      sfx.setMuted(!sfx.muted);
+      document.getElementById('btn-mute').textContent = sfx.muted ? 'Audio: Off' : 'Audio: On';
+    }
+
+    function togglePovMode() {
+      game.povMode = game.povMode === 'chase' ? 'first' : 'chase';
+      const label = game.povMode === 'first' ? 'View: RIDER POV (V)' : 'View: CHASE (V)';
+      document.getElementById('btn-pov').textContent = label;
+      if (game.state === STATE.PLAYING) {
+        showToast(game.povMode === 'first' ? 'RIDER POV ENGAGED' : 'CHASE CAM ENGAGED', '#00f5ff');
+      }
+    }
+
+    document.getElementById('btn-start').addEventListener('click', () => {
+      sfx.init();
+      resetCourseRun();
+    });
+    document.getElementById('btn-resume').addEventListener('click', () => togglePause(false));
+    document.getElementById('btn-pause').addEventListener('click', () => togglePause());
+    document.getElementById('btn-pause-bounce').addEventListener('click', () => {
+      togglePause(false);
+      triggerWipeout('BOUNCE BACK!', true);
+    });
+    document.getElementById('btn-pause-restart').addEventListener('click', () => resetCourseRun());
+    document.getElementById('btn-replay').addEventListener('click', () => resetCourseRun());
+    document.getElementById('btn-mute').addEventListener('click', toggleMute);
+    document.getElementById('btn-pov').addEventListener('click', togglePovMode);
+
+    document.getElementById('btn-download-title').addEventListener('click', downloadStandaloneHtml);
+    document.getElementById('btn-download-pause').addEventListener('click', downloadStandaloneHtml);
+    document.getElementById('btn-download-finish').addEventListener('click', downloadStandaloneHtml);
+
+    document.getElementById('btn-bloom').addEventListener('click', (e) => {
+      game.bloomEnabled = !game.bloomEnabled;
+      e.target.textContent = game.bloomEnabled ? 'FX: HIGH' : 'FX: FAST';
+      if (!isSoftwareGl) sunLight.castShadow = game.bloomEnabled;
+    });
+
+    function enableTouchUI() {
+      document.getElementById('touch-controls').style.display = 'block';
+    }
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) enableTouchUI();
+    window.addEventListener('touchstart', enableTouchUI, { once: true, passive: true });
+
+    document.querySelectorAll('#touch-controls .touch-btn[data-key]').forEach((btn) => {
+      const k = btn.dataset.key;
+      const setState = (val) => {
+        sfx.init();
+        if (k === 'jump' && val && !keys.jump) jumpJustPressed = true;
+        keys[k] = val;
+        btn.classList.toggle('active', val);
+      };
+      btn.addEventListener('pointerdown', (e) => { e.preventDefault(); setState(true); });
+      btn.addEventListener('pointerup', () => setState(false));
+      btn.addEventListener('pointercancel', () => setState(false));
+      btn.addEventListener('pointerleave', () => setState(false));
+    });
+
+    document.getElementById('touch-pov').addEventListener('pointerdown', (e) => {
+      e.preventDefault(); sfx.init(); togglePovMode();
+    });
+    document.getElementById('touch-anchor').addEventListener('pointerdown', (e) => {
+      e.preventDefault(); sfx.init(); tryDropCustomAnchor();
+    });
+    document.getElementById('touch-retry').addEventListener('pointerdown', (e) => {
+      e.preventDefault(); sfx.init();
+      if (game.state === STATE.PLAYING) triggerWipeout('BOUNCE BACK!', true);
+    });
+
+    window.addEventListener('resize', () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      if (composer) composer.setSize(w, h);
+      if (bloomPass) bloomPass.resolution.set(w, h);
+      speedStreakOverlay.resize();
+    });
+
+    // =========================================================================
+    // 14. MAIN FIXED-TIMESTEP GAME LOOP
+    // =========================================================================
+    let lastTime = performance.now();
+    let accumulator = 0;
+
+    function afterDraw(cb) {
+      const gl = renderer.getContext();
+      if (!gl || typeof gl.fenceSync !== 'function') {
+        setTimeout(cb, 80);
+        return;
+      }
+      const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+      gl.flush();
+      const poll = () => {
+        const st = sync && gl.getSyncParameter(sync, gl.SYNC_STATUS);
+        if (st === gl.UNSIGNALED) {
+          setTimeout(poll, 5);
+        } else {
+          if (sync) gl.deleteSync(sync);
+          setTimeout(cb, 80);
+        }
+      };
+      setTimeout(poll, 5);
+    }
+
+    function renderFrame() {
+      if (composer && game.bloomEnabled && !isSoftwareGl) {
+        composer.render();
+      } else {
+        renderer.render(scene, camera);
+      }
+    }
+
+    function animate(now = performance.now()) {
+      const rawDt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+
+      if (game.state !== STATE.PAUSED) {
+        if (game.hitstop > 0) {
+          game.hitstop -= rawDt;
+        } else {
+          accumulator += rawDt;
+          while (accumulator >= CONFIG.FIXED_DT) {
+            if (game.state === STATE.TITLE || game.state === STATE.FINISH) {
+              game.elapsedTime += CONFIG.FIXED_DT;
+              updateDynamicObstacles(CONFIG.FIXED_DT, game.elapsedTime);
+            } else {
+              stepPhysics(CONFIG.FIXED_DT);
+            }
+            particles.update(CONFIG.FIXED_DT);
+            jumpJustPressed = false;
+            accumulator -= CONFIG.FIXED_DT;
+          }
+          updateVisualsAndCamera(rawDt);
+        }
+      }
+
+      renderFrame();
+
+      if (isSoftwareGl) afterDraw(() => animate(performance.now()));
+      else requestAnimationFrame(animate);
+    }
+
+    if (!isSoftwareGl) renderer.compile(scene, camera);
+    if (isSoftwareGl) afterDraw(() => animate(performance.now()));
+    else requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

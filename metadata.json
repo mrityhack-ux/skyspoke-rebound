@@ -1,0 +1,6 @@
+{
+  "name": "SkySpoke Rebound",
+  "description": "A vibrant 3D toybox bicycle obstacle course (obby) with elastic checkpoint bounce-back tethers and timed Rebound Boosts. Made for Haven by Hack Club, Lucknow.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
